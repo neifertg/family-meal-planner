@@ -1,0 +1,26 @@
+{
+  "name": "family-meal-planner",
+  "version": "0.1.0",
+  "description": "A meal planning application to help organize weekly family meals",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neifertg/family-meal-planner.git"
+  },
+  "keywords": [
+    "meal-planning",
+    "family",
+    "recipes",
+    "meal-prep"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/neifertg/family-meal-planner/issues"
+  },
+  "homepage": "https://github.com/neifertg/family-meal-planner#readme"
+}
