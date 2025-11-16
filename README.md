@@ -1,15 +1,17 @@
 # Family Meal Planner
 
-A meal planning application to help organize weekly family meals, manage recipes, and simplify grocery shopping.
+A mobile-first Progressive Web App (PWA) to help organize weekly family meals, manage recipes, and simplify grocery shopping. Optimized for smartphones and tablets with offline capability.
 
 ## Features (Planned)
 
-- **Weekly Meal Planning**: Plan breakfast, lunch, and dinner for the entire week
-- **Recipe Management**: Store and organize your family's favorite recipes
+- **Weekly Meal Planning**: Plan breakfast, lunch, and dinner for the entire week with touch-friendly interface
+- **Recipe Management**: Store and organize your family's favorite recipes with photos
 - **Shopping List Generation**: Automatically generate shopping lists from meal plans
 - **Dietary Preferences**: Track family members' dietary restrictions and preferences
 - **Meal History**: Keep track of past meals to avoid repetition
-- **Calendar Integration**: View meal plans in calendar format
+- **Mobile-Optimized UI**: Swipe gestures, bottom navigation, and responsive design
+- **Offline Support**: Access your meal plans and recipes even without internet
+- **Add to Home Screen**: Install as a PWA for app-like experience
 
 ## Project Structure
 
@@ -50,13 +52,17 @@ npm start
 
 ## Development Roadmap
 
-- [ ] Set up basic project structure
+- [x] Set up basic project structure
+- [ ] Choose and configure mobile-first framework (React/Next.js)
 - [ ] Design database schema for meals and recipes
-- [ ] Create meal planning interface
-- [ ] Implement recipe storage
-- [ ] Build shopping list generator
+- [ ] Implement PWA features (service worker, manifest)
+- [ ] Create mobile-optimized meal planning interface
+- [ ] Implement recipe storage with image upload
+- [ ] Build shopping list generator with swipe-to-check
 - [ ] Add user authentication
-- [ ] Mobile responsive design
+- [ ] Implement offline functionality
+- [ ] Add touch gestures and animations
+- [ ] Test on various mobile devices and screen sizes
 
 ## Contributing
 
