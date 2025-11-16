@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Linear Project Board
+    url: https://linear.app
+    about: View and manage tasks in Linear
+  - name: Vercel Deployment
+    url: https://vercel.com/seths-projects-76acb5db/family-meal-planner
+    about: View deployment status and logs

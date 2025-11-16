@@ -50,9 +50,33 @@ npm install
 npm start
 ```
 
+## Deployment & Project Management
+
+### Live Deployment
+- **Production URL**: https://family-meal-planner-l42l8c91f-seths-projects-76acb5db.vercel.app
+- **Vercel Dashboard**: https://vercel.com/seths-projects-76acb5db/family-meal-planner
+- Automatic deployments on push to `main` branch
+
+### Project Management
+This project uses **Linear** for issue tracking and project management:
+- Track features, bugs, and tasks in Linear
+- GitHub issues automatically sync with Linear
+- Use Linear issue IDs in commit messages for automatic linking (e.g., `git commit -m "FMP-123: Add recipe feature"`)
+- View project roadmap and sprint planning in Linear workspace
+
+### Development Workflow
+1. Create or claim an issue in Linear
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Make changes and commit with Linear issue ID
+4. Push and create a Pull Request
+5. Vercel will automatically create a preview deployment
+6. After review and merge, changes deploy to production automatically
+
 ## Development Roadmap
 
 - [x] Set up basic project structure
+- [x] Connect to Vercel for deployment
+- [x] Set up Linear integration
 - [ ] Choose and configure mobile-first framework (React/Next.js)
 - [ ] Design database schema for meals and recipes
 - [ ] Implement PWA features (service worker, manifest)
@@ -66,7 +90,20 @@ npm start
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please follow these steps:
+
+1. Check the [Linear project board](https://linear.app) for available issues
+2. Comment on an issue to claim it, or create a new issue
+3. Fork the repository and create a feature branch
+4. Make your changes following the coding standards
+5. Include Linear issue ID in commits (e.g., `FMP-123: Description`)
+6. Submit a Pull Request with a clear description
+7. Wait for review and address any feedback
+
+### Issue Templates
+Use the provided GitHub issue templates for:
+- **Bug Reports**: Report issues with the app
+- **Feature Requests**: Suggest new features or improvements
 
 ## License
 
