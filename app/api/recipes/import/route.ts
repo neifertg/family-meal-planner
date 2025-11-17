@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import * as cheerio from 'cheerio'
 
 type ScrapedRecipe = {
   name?: string
@@ -15,6 +16,78 @@ type ScrapedRecipe = {
   category?: string
 }
 
+async function scrapeRecipe(url: string): Promise<ScrapedRecipe | null> {
+  try {
+    const response = await fetch(url)
+    const html = await response.text()
+    const $ = cheerio.load(html)
+
+    // Try to find JSON-LD schema.org Recipe data (most recipe sites use this)
+    const jsonLd = $('script[type="application/ld+json"]')
+      .toArray()
+      .map((el) => {
+        try {
+          return JSON.parse($(el).html() || '{}')
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean)
+
+    // Find the Recipe schema
+    let recipeData: any = jsonLd.find((data: any) => data['@type'] === 'Recipe')
+
+    // Sometimes it's nested in a graph
+    if (!recipeData) {
+      const graphData = jsonLd.find((data: any) => data['@graph'])
+      if (graphData) {
+        recipeData = graphData['@graph'].find((item: any) => item['@type'] === 'Recipe')
+      }
+    }
+
+    if (!recipeData) {
+      return null
+    }
+
+    // Extract ingredients
+    let ingredients: string[] = []
+    if (Array.isArray(recipeData.recipeIngredient)) {
+      ingredients = recipeData.recipeIngredient
+    } else if (typeof recipeData.recipeIngredient === 'string') {
+      ingredients = [recipeData.recipeIngredient]
+    }
+
+    // Extract instructions
+    let instructions: string[] = []
+    if (Array.isArray(recipeData.recipeInstructions)) {
+      instructions = recipeData.recipeInstructions.map((inst: any) => {
+        if (typeof inst === 'string') return inst
+        if (inst.text) return inst.text
+        return JSON.stringify(inst)
+      })
+    } else if (typeof recipeData.recipeInstructions === 'string') {
+      instructions = [recipeData.recipeInstructions]
+    }
+
+    return {
+      name: recipeData.name || '',
+      description: recipeData.description || '',
+      image: recipeData.image?.url || recipeData.image || '',
+      ingredients,
+      instructions,
+      prepTime: recipeData.prepTime || '',
+      cookTime: recipeData.cookTime || '',
+      totalTime: recipeData.totalTime || '',
+      servings: recipeData.recipeYield?.toString() || '',
+      cuisine: recipeData.recipeCuisine || '',
+      category: recipeData.recipeCategory || '',
+    }
+  } catch (error) {
+    console.error('Error scraping recipe:', error)
+    return null
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { url } = await request.json()
@@ -26,15 +99,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use require to bypass TypeScript module resolution for recipe-scraper
-    const recipeScraper: (url: string) => Promise<ScrapedRecipe | null> = require('recipe-scraper')
-
     // Scrape the recipe from the URL
-    const recipe = await recipeScraper(url)
+    const recipe = await scrapeRecipe(url)
 
     if (!recipe) {
       return NextResponse.json(
-        { error: 'Could not extract recipe from URL' },
+        { error: 'Could not extract recipe from URL. Make sure the URL points to a recipe page with structured data.' },
         { status: 400 }
       )
     }
@@ -64,15 +134,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const familyId = (family as { id: string }).id
+
+    // Parse time strings (ISO 8601 duration format like "PT30M" = 30 minutes)
+    const parseISODuration = (duration: string): number | null => {
+      if (!duration) return null
+      const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/)
+      if (!match) return null
+      const hours = parseInt(match[1] || '0')
+      const minutes = parseInt(match[2] || '0')
+      return hours * 60 + minutes
+    }
+
     // Format the recipe data to match our schema
     const recipeData = {
-      family_id: family.id,
+      family_id: familyId,
       name: recipe.name || 'Untitled Recipe',
       description: recipe.description || null,
       source_url: url,
-      prep_time_minutes: recipe.prepTime ? parseInt(recipe.prepTime) : null,
-      cook_time_minutes: recipe.cookTime ? parseInt(recipe.cookTime) : null,
-      total_time_minutes: recipe.totalTime ? parseInt(recipe.totalTime) : null,
+      prep_time_minutes: parseISODuration(recipe.prepTime || ''),
+      cook_time_minutes: parseISODuration(recipe.cookTime || ''),
+      total_time_minutes: parseISODuration(recipe.totalTime || ''),
       servings: recipe.servings ? parseInt(recipe.servings) : null,
       ingredients: recipe.ingredients || [],
       instructions: recipe.instructions || [],
