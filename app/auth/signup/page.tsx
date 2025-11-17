@@ -20,11 +20,6 @@ export default function SignUpPage() {
     setLoading(true)
 
     try {
-      console.log('Starting signup with:', { email, familyName })
-      console.log('Supabase URL from env:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-      console.log('Window fetch available:', typeof window.fetch)
-
-      // Create supabase client fresh
       const supabase = createClient()
 
       // Create auth user
@@ -34,15 +29,7 @@ export default function SignUpPage() {
         options: {
           emailRedirectTo: `${window.location.origin}/dashboard`,
         }
-      }).catch((err) => {
-        console.error('Fetch error details:', err)
-        console.error('Error name:', err.name)
-        console.error('Error message:', err.message)
-        console.error('Error stack:', err.stack)
-        throw err
       })
-
-      console.log('Auth response:', { authData, authError })
 
       if (authError) throw authError
 
@@ -54,8 +41,6 @@ export default function SignUpPage() {
             name: familyName,
             monthly_budget: monthlyBudget ? parseFloat(monthlyBudget) : null,
           } as any)
-
-        console.log('Family insert result:', { familyError })
 
         if (familyError) throw familyError
 
