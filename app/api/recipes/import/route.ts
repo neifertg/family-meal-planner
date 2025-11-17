@@ -27,11 +27,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Dynamically import recipe-scraper (it's a CommonJS module)
-    // @ts-expect-error - recipe-scraper doesn't have TypeScript types
-    const { default: recipeScraper } = await import('recipe-scraper')
+    const recipeScraper = (await import('recipe-scraper' as any)).default as (url: string) => Promise<ScrapedRecipe | null>
 
     // Scrape the recipe from the URL
-    const recipe: ScrapedRecipe | null = await recipeScraper(url)
+    const recipe = await recipeScraper(url)
 
     if (!recipe) {
       return NextResponse.json(
