@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Dynamically import recipe-scraper (it's a CommonJS module)
-    const recipeScraper = (await import('recipe-scraper' as any)).default as (url: string) => Promise<ScrapedRecipe | null>
+    // Use require to bypass TypeScript module resolution for recipe-scraper
+    const recipeScraper: (url: string) => Promise<ScrapedRecipe | null> = require('recipe-scraper')
 
     // Scrape the recipe from the URL
     const recipe = await recipeScraper(url)
