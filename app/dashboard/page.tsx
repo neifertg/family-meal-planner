@@ -65,11 +65,11 @@ export default async function DashboardPage() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <Link href="/dashboard/recipes" className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
           <div className="text-2xl mb-2">📖</div>
           <div className="text-3xl font-bold text-gray-900">{recipeCount || 0}</div>
           <div className="text-sm text-gray-600">Recipes</div>
-        </div>
+        </Link>
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="text-2xl mb-2">📦</div>
