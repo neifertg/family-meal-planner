@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+type ScrapedRecipe = {
+  name?: string
+  description?: string
+  image?: string
+  ingredients?: string[]
+  instructions?: string[]
+  prepTime?: string
+  cookTime?: string
+  totalTime?: string
+  servings?: string
+  cuisine?: string
+  category?: string
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { url } = await request.json()
@@ -13,10 +27,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Dynamically import recipe-scraper (it's a CommonJS module)
+    // @ts-expect-error - recipe-scraper doesn't have TypeScript types
     const { default: recipeScraper } = await import('recipe-scraper')
 
     // Scrape the recipe from the URL
-    const recipe = await recipeScraper(url)
+    const recipe: ScrapedRecipe | null = await recipeScraper(url)
 
     if (!recipe) {
       return NextResponse.json(
@@ -66,7 +81,7 @@ export async function POST(request: NextRequest) {
       cuisine: recipe.cuisine || null,
       category: recipe.category || null,
       created_by: user.id,
-    }
+    } as any
 
     // Insert the recipe
     const { data: insertedRecipe, error: insertError } = await supabase
