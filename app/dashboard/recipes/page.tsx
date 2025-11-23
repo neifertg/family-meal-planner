@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
@@ -21,6 +21,9 @@ export default function RecipesPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCuisine, setSelectedCuisine] = useState<string>('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('')
 
   useEffect(() => {
     loadRecipes()
@@ -44,11 +47,44 @@ export default function RecipesPage() {
     }
   }
 
+  // Get unique cuisines and categories for filters
+  const cuisines = useMemo(() => {
+    const unique = [...new Set(recipes.map(r => r.cuisine).filter(Boolean))]
+    return unique.sort()
+  }, [recipes])
+
+  const categories = useMemo(() => {
+    const unique = [...new Set(recipes.map(r => r.category).filter(Boolean))]
+    return unique.sort()
+  }, [recipes])
+
+  // Filter recipes based on search and filters
+  const filteredRecipes = useMemo(() => {
+    return recipes.filter(recipe => {
+      const matchesSearch = searchQuery === '' ||
+        recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        recipe.description?.toLowerCase().includes(searchQuery.toLowerCase())
+
+      const matchesCuisine = selectedCuisine === '' || recipe.cuisine === selectedCuisine
+      const matchesCategory = selectedCategory === '' || recipe.category === selectedCategory
+
+      return matchesSearch && matchesCuisine && matchesCategory
+    })
+  }, [recipes, searchQuery, selectedCuisine, selectedCategory])
+
+  const clearFilters = () => {
+    setSearchQuery('')
+    setSelectedCuisine('')
+    setSelectedCategory('')
+  }
+
+  const hasActiveFilters = searchQuery || selectedCuisine || selectedCategory
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <Link
               href="/dashboard"
@@ -58,19 +94,95 @@ export default function RecipesPage() {
             </Link>
             <h1 className="text-4xl font-bold text-gray-900">My Recipes</h1>
             <p className="text-gray-600 mt-2">
-              {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'} in your collection
+              {filteredRecipes.length} of {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
             </p>
           </div>
-          <Link
-            href="/dashboard/recipes/import"
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors inline-flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Import Recipe
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              href="/dashboard/recipes/new"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors inline-flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Create Recipe
+            </Link>
+            <Link
+              href="/dashboard/recipes/import"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors inline-flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Import Recipe
+            </Link>
+          </div>
         </div>
+
+        {/* Search and Filters */}
+        {recipes.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1">
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search recipes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Cuisine Filter */}
+              {cuisines.length > 0 && (
+                <div className="md:w-48">
+                  <select
+                    value={selectedCuisine}
+                    onChange={(e) => setSelectedCuisine(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="">All Cuisines</option>
+                    {cuisines.map(cuisine => (
+                      <option key={cuisine} value={cuisine!}>{cuisine}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Category Filter */}
+              {categories.length > 0 && (
+                <div className="md:w-48">
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="">All Categories</option>
+                    {categories.map(category => (
+                      <option key={category} value={category!}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Loading State */}
         {loading && (
@@ -94,21 +206,48 @@ export default function RecipesPage() {
             </svg>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No recipes yet</h2>
             <p className="text-gray-600 mb-6">
-              Start building your collection by importing recipes from your favorite websites
+              Start building your collection by importing recipes or creating your own
             </p>
-            <Link
-              href="/dashboard/recipes/import"
+            <div className="flex justify-center gap-4">
+              <Link
+                href="/dashboard/recipes/import"
+                className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              >
+                Import Recipe
+              </Link>
+              <Link
+                href="/dashboard/recipes/new"
+                className="inline-block bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors"
+              >
+                Create Recipe
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* No Results */}
+        {!loading && !error && recipes.length > 0 && filteredRecipes.length === 0 && (
+          <div className="bg-white rounded-lg shadow-lg p-12 text-center">
+            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">No recipes found</h2>
+            <p className="text-gray-600 mb-6">
+              Try adjusting your search or filters
+            </p>
+            <button
+              onClick={clearFilters}
               className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
             >
-              Import Your First Recipe
-            </Link>
+              Clear Filters
+            </button>
           </div>
         )}
 
         {/* Recipe Grid */}
-        {!loading && !error && recipes.length > 0 && (
+        {!loading && !error && filteredRecipes.length > 0 && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recipes.map((recipe) => (
+            {filteredRecipes.map((recipe) => (
               <Link
                 key={recipe.id}
                 href={`/dashboard/recipes/${recipe.id}`}
