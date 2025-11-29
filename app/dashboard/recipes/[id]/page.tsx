@@ -149,7 +149,7 @@ export default function RecipeDetailPage() {
 
       const { data, error: updateError } = await supabase
         .from('recipes')
-        .update(updateData)
+        .update(updateData as any)
         .eq('id', recipe.id)
         .select()
         .single()
