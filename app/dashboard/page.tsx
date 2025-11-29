@@ -226,6 +226,14 @@ export default async function DashboardPage() {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link
+            href="/dashboard/recipes"
+            className="flex flex-col items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+          >
+            <span className="text-3xl mb-2">📖</span>
+            <span className="text-sm font-medium text-gray-700">Manage Recipes</span>
+          </Link>
+
+          <Link
             href="/dashboard/recipes/import"
             className="flex flex-col items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
           >
@@ -247,14 +255,6 @@ export default async function DashboardPage() {
           >
             <span className="text-3xl mb-2">📦</span>
             <span className="text-sm font-medium text-gray-700">Add Inventory</span>
-          </Link>
-
-          <Link
-            href="/dashboard/shopping"
-            className="flex flex-col items-center justify-center p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
-          >
-            <span className="text-3xl mb-2">🛒</span>
-            <span className="text-sm font-medium text-gray-700">Shopping List</span>
           </Link>
         </div>
       </div>
