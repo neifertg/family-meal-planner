@@ -147,16 +147,16 @@ export default function RecipeDetailPage() {
         instructions,
       }
 
-      const { data, error: updateError } = await supabase
+      const { data, error: updateError } = (await supabase
         .from('recipes')
-        .update(updateData as any)
+        .update(updateData)
         .eq('id', recipe.id)
         .select()
-        .single()
+        .single()) as any
 
       if (updateError) throw updateError
 
-      setRecipe(data)
+      setRecipe(data as Recipe)
       setEditing(false)
     } catch (err: any) {
       console.error('Error updating recipe:', err)
