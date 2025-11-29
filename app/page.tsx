@@ -1,6 +1,27 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient()
+
+  // Check if user is already logged in
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (user) {
+    redirect('/dashboard')
+  }
+
+  // Auto-login with default account (temporary for development)
+  const { error } = await supabase.auth.signInWithPassword({
+    email: 'neifert_family@example.com',
+    password: 'neifert_family_2024',
+  })
+
+  if (!error) {
+    redirect('/dashboard')
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-green-50 to-white">
       <div className="container mx-auto px-4 py-16">
