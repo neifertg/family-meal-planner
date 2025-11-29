@@ -49,6 +49,10 @@ export default function RecipeDetailPage() {
 
   const loadRecipe = async () => {
     try {
+      if (!params.id) {
+        throw new Error('Recipe ID not found')
+      }
+
       const supabase = createClient()
       const { data, error } = await supabase
         .from('recipes')
@@ -68,6 +72,7 @@ export default function RecipeDetailPage() {
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this recipe?')) return
+    if (!params.id) return
 
     try {
       const supabase = createClient()
