@@ -147,12 +147,13 @@ export default function RecipeDetailPage() {
         instructions,
       }
 
-      const { data, error: updateError } = (await supabase
+      // @ts-ignore - Supabase type inference issue with update
+      const { data, error: updateError } = await supabase
         .from('recipes')
         .update(updateData)
         .eq('id', recipe.id)
         .select()
-        .single()) as any
+        .single()
 
       if (updateError) throw updateError
 
