@@ -45,7 +45,18 @@ async function scrapeRecipe(url: string): Promise<ScrapedRecipe | null> {
       }
     }
 
+    // Also check for arrays of schemas
     if (!recipeData) {
+      for (const schema of jsonLd) {
+        if (Array.isArray(schema)) {
+          recipeData = schema.find((item: any) => item['@type'] === 'Recipe')
+          if (recipeData) break
+        }
+      }
+    }
+
+    if (!recipeData) {
+      console.error('No JSON-LD Recipe schema found. Available schemas:', jsonLd.map((d: any) => d['@type']))
       return null
     }
 
@@ -104,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     if (!recipe) {
       return NextResponse.json(
-        { error: 'Could not extract recipe from URL. Make sure the URL points to a recipe page with structured data.' },
+        { error: 'Could not extract recipe from URL. The recipe may not have structured data (schema.org), or the site may be blocking automated requests. Try copying the recipe manually instead.' },
         { status: 400 }
       )
     }
