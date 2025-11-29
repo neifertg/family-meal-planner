@@ -147,9 +147,10 @@ export default function RecipeDetailPage() {
         instructions,
       }
 
-      // @ts-ignore - Supabase type inference issue with update
+      // @ts-expect-error - Supabase type inference issue with update
       const { data, error: updateError } = await supabase
         .from('recipes')
+        // @ts-expect-error - Supabase type inference issue with update
         .update(updateData)
         .eq('id', recipe.id)
         .select()
