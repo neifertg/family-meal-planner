@@ -55,53 +55,57 @@ export default async function DashboardPage() {
     .limit(5)
 
   return (
-    <div className="space-y-8 pb-20 md:pb-8">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+    <div className="space-y-6 pb-20 md:pb-8">
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-8 text-white shadow-lg">
+        <h1 className="text-4xl font-bold mb-2">
           Welcome back{family ? `, ${family.name}` : ''}!
         </h1>
-        <p className="text-gray-600">Here's what's happening with your meal planning</p>
+        <p className="text-green-100 text-lg">Here's what's happening with your meal planning</p>
       </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Link href="/dashboard/recipes" className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-          <div className="text-2xl mb-2">📖</div>
-          <div className="text-3xl font-bold text-gray-900">{recipeCount || 0}</div>
-          <div className="text-sm text-gray-600">Recipes</div>
+        <Link href="/dashboard/recipes" className="group bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 border border-orange-200 hover:scale-105">
+          <div className="text-3xl mb-3">📖</div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{recipeCount || 0}</div>
+          <div className="text-sm font-medium text-gray-700">Recipes</div>
         </Link>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="text-2xl mb-2">📦</div>
-          <div className="text-3xl font-bold text-gray-900">{inventoryCount || 0}</div>
-          <div className="text-sm text-gray-600">Inventory Items</div>
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl shadow-sm border border-blue-200">
+          <div className="text-3xl mb-3">📦</div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{inventoryCount || 0}</div>
+          <div className="text-sm font-medium text-gray-700">Inventory Items</div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="text-2xl mb-2">👨‍👩‍👧‍👦</div>
-          <div className="text-3xl font-bold text-gray-900">{memberCount || 0}</div>
-          <div className="text-sm text-gray-600">Family Members</div>
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl shadow-sm border border-purple-200">
+          <div className="text-3xl mb-3">👨‍👩‍👧‍👦</div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{memberCount || 0}</div>
+          <div className="text-sm font-medium text-gray-700">Family Members</div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="text-2xl mb-2">💰</div>
-          <div className="text-3xl font-bold text-gray-900">
+        <div className="bg-gradient-to-br from-green-50 to-emerald-100 p-6 rounded-xl shadow-sm border border-green-200">
+          <div className="text-3xl mb-3">💰</div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">
             {family?.monthly_budget ? `$${family.monthly_budget}` : '-'}
           </div>
-          <div className="text-sm text-gray-600">Monthly Budget</div>
+          <div className="text-sm font-medium text-gray-700">Monthly Budget</div>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Upcoming Meals */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">This Week's Meals</h2>
+        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <span>🍽️</span>
+              This Week's Meals
+            </h2>
             <Link
               href="/dashboard/calendar"
-              className="text-sm text-green-600 hover:text-green-700"
+              className="text-sm font-medium text-green-600 hover:text-green-700 hover:underline"
             >
-              View Calendar
+              View Calendar →
             </Link>
           </div>
 
@@ -110,7 +114,7 @@ export default async function DashboardPage() {
               {upcomingMeals.map((meal: any) => (
                 <div
                   key={meal.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:shadow-sm transition-shadow"
                 >
                   <div>
                     <div className="font-medium text-gray-900">
@@ -161,14 +165,17 @@ export default async function DashboardPage() {
         </div>
 
         {/* Expiring Soon */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Expiring Soon</h2>
+        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <span>⏰</span>
+              Expiring Soon
+            </h2>
             <Link
               href="/dashboard/inventory"
-              className="text-sm text-green-600 hover:text-green-700"
+              className="text-sm font-medium text-green-600 hover:text-green-700 hover:underline"
             >
-              Manage Inventory
+              Manage Inventory →
             </Link>
           </div>
 
@@ -222,39 +229,42 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+      <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+        <h2 className="text-2xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+          <span>⚡</span>
+          Quick Actions
+        </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link
             href="/dashboard/recipes"
-            className="flex flex-col items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+            className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-xl transition-all duration-200 border border-orange-200 hover:shadow-md hover:scale-105"
           >
-            <span className="text-2xl mb-2">📖</span>
-            <span className="text-sm font-medium text-gray-700">Manage Recipes</span>
+            <span className="text-3xl mb-3 group-hover:scale-110 transition-transform">📖</span>
+            <span className="text-sm font-semibold text-gray-800">Manage Recipes</span>
           </Link>
 
           <Link
             href="/dashboard/recipes/import"
-            className="flex flex-col items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+            className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-green-50 to-emerald-100 hover:from-green-100 hover:to-emerald-200 rounded-xl transition-all duration-200 border border-green-200 hover:shadow-md hover:scale-105"
           >
-            <span className="text-2xl mb-2">➕</span>
-            <span className="text-sm font-medium text-gray-700">Import Recipe</span>
+            <span className="text-3xl mb-3 group-hover:scale-110 transition-transform">➕</span>
+            <span className="text-sm font-semibold text-gray-800">Import Recipe</span>
           </Link>
 
           <Link
             href="/dashboard/calendar"
-            className="flex flex-col items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+            className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-xl transition-all duration-200 border border-blue-200 hover:shadow-md hover:scale-105"
           >
-            <span className="text-2xl mb-2">📅</span>
-            <span className="text-sm font-medium text-gray-700">Plan Week</span>
+            <span className="text-3xl mb-3 group-hover:scale-110 transition-transform">📅</span>
+            <span className="text-sm font-semibold text-gray-800">Plan Week</span>
           </Link>
 
           <Link
             href="/dashboard/inventory"
-            className="flex flex-col items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+            className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 rounded-xl transition-all duration-200 border border-purple-200 hover:shadow-md hover:scale-105"
           >
-            <span className="text-2xl mb-2">📦</span>
-            <span className="text-sm font-medium text-gray-700">Add Inventory</span>
+            <span className="text-3xl mb-3 group-hover:scale-110 transition-transform">📦</span>
+            <span className="text-sm font-semibold text-gray-800">Add Inventory</span>
           </Link>
         </div>
       </div>
