@@ -13,12 +13,29 @@ export default async function HomePage() {
   }
 
   // Auto-login with default account (temporary for development)
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: authData, error } = await supabase.auth.signInWithPassword({
     email: 'neifert_family@example.com',
     password: 'neifert_family_2024',
   })
 
-  if (!error) {
+  if (!error && authData.user) {
+    // Check if family exists, create if not
+    const { data: family } = await supabase
+      .from('families')
+      .select('id')
+      .eq('created_by', authData.user.id)
+      .single()
+
+    if (!family) {
+      // Create family if it doesn't exist
+      await supabase
+        .from('families')
+        .insert({
+          name: 'Neifert Family',
+          created_by: authData.user.id,
+        } as any)
+    }
+
     redirect('/dashboard')
   }
 
