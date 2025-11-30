@@ -81,17 +81,11 @@ export default function RecipesPage() {
   const hasActiveFilters = searchQuery || selectedCuisine || selectedCategory
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <Link
-              href="/dashboard"
-              className="text-green-600 hover:text-green-700 font-medium mb-4 inline-block"
-            >
-              ← Back to Dashboard
-            </Link>
             <h1 className="text-4xl font-bold text-gray-900">My Recipes</h1>
             <p className="text-gray-600 mt-2">
               {filteredRecipes.length} of {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
@@ -201,7 +195,7 @@ export default function RecipesPage() {
         {/* Empty State */}
         {!loading && !error && recipes.length === 0 && (
           <div className="bg-white rounded-lg shadow-lg p-12 text-center">
-            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No recipes yet</h2>
@@ -228,7 +222,7 @@ export default function RecipesPage() {
         {/* No Results */}
         {!loading && !error && recipes.length > 0 && filteredRecipes.length === 0 && (
           <div className="bg-white rounded-lg shadow-lg p-12 text-center">
-            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No recipes found</h2>
@@ -263,7 +257,7 @@ export default function RecipesPage() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </div>

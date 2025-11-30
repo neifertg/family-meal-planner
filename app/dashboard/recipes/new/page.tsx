@@ -94,16 +94,10 @@ export default function NewRecipePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
-      <div className="max-w-3xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Link
-            href="/dashboard/recipes"
-            className="text-green-600 hover:text-green-700 font-medium mb-4 inline-block"
-          >
-            ← Back to Recipes
-          </Link>
           <h1 className="text-4xl font-bold text-gray-900">Create New Recipe</h1>
           <p className="text-gray-600 mt-2">
             Add your own recipe to your collection

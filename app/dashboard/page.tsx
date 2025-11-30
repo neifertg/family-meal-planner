@@ -229,7 +229,7 @@ export default async function DashboardPage() {
             href="/dashboard/recipes"
             className="flex flex-col items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
           >
-            <span className="text-3xl mb-2">📖</span>
+            <span className="text-2xl mb-2">📖</span>
             <span className="text-sm font-medium text-gray-700">Manage Recipes</span>
           </Link>
 
@@ -237,7 +237,7 @@ export default async function DashboardPage() {
             href="/dashboard/recipes/import"
             className="flex flex-col items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
           >
-            <span className="text-3xl mb-2">➕</span>
+            <span className="text-2xl mb-2">➕</span>
             <span className="text-sm font-medium text-gray-700">Import Recipe</span>
           </Link>
 
@@ -245,7 +245,7 @@ export default async function DashboardPage() {
             href="/dashboard/calendar"
             className="flex flex-col items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
           >
-            <span className="text-3xl mb-2">📅</span>
+            <span className="text-2xl mb-2">📅</span>
             <span className="text-sm font-medium text-gray-700">Plan Week</span>
           </Link>
 
@@ -253,7 +253,7 @@ export default async function DashboardPage() {
             href="/dashboard/inventory"
             className="flex flex-col items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
           >
-            <span className="text-3xl mb-2">📦</span>
+            <span className="text-2xl mb-2">📦</span>
             <span className="text-sm font-medium text-gray-700">Add Inventory</span>
           </Link>
         </div>

@@ -59,16 +59,10 @@ export default function RecipeImportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Link
-            href="/dashboard"
-            className="text-green-600 hover:text-green-700 font-medium mb-4 inline-block"
-          >
-            ← Back to Dashboard
-          </Link>
           <h1 className="text-4xl font-bold text-gray-900">Import Recipe</h1>
           <p className="text-gray-600 mt-2">
             Paste a URL from your favorite recipe website to automatically import it
