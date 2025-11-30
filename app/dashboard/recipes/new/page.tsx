@@ -94,31 +94,45 @@ export default function NewRecipePage() {
   }
 
   return (
-    <div>
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Create New Recipe</h1>
-          <p className="text-gray-600 mt-2">
-            Add your own recipe to your collection
-          </p>
+    <div className="max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 rounded-2xl p-6 md:p-8 mb-6 text-white shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1">Create New Recipe</h1>
+            <p className="text-purple-100">
+              Add your own recipe to your collection
+            </p>
+          </div>
+          <Link
+            href="/dashboard/recipes"
+            className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all duration-200 backdrop-blur-sm font-medium text-center"
+          >
+            ← Back
+          </Link>
         </div>
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-              {error}
-            </div>
-          )}
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {error && (
+          <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-lg">
+            <p className="font-medium">Error</p>
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
 
-          {/* Basic Info */}
-          <div className="bg-white rounded-lg shadow-lg p-6 space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
+        {/* Basic Info */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <span className="text-2xl">📝</span>
+            Basic Information
+          </h2>
 
+          <div className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Recipe Name *
+              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Recipe Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -126,13 +140,13 @@ export default function NewRecipePage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Homemade Pizza"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Description
               </label>
               <textarea
@@ -140,13 +154,13 @@ export default function NewRecipePage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="A brief description of your recipe..."
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                rows={2}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
               />
             </div>
 
             <div>
-              <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="imageUrl" className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Image URL
               </label>
               <input
@@ -155,14 +169,14 @@ export default function NewRecipePage() {
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 placeholder="https://example.com/image.jpg"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
               />
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
-                <label htmlFor="prepTime" className="block text-sm font-medium text-gray-700 mb-1">
-                  Prep Time (min)
+                <label htmlFor="prepTime" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Prep (min)
                 </label>
                 <input
                   type="number"
@@ -171,13 +185,13 @@ export default function NewRecipePage() {
                   onChange={(e) => setPrepTime(e.target.value)}
                   placeholder="15"
                   min="0"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
                 />
               </div>
 
               <div>
-                <label htmlFor="cookTime" className="block text-sm font-medium text-gray-700 mb-1">
-                  Cook Time (min)
+                <label htmlFor="cookTime" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Cook (min)
                 </label>
                 <input
                   type="number"
@@ -186,12 +200,12 @@ export default function NewRecipePage() {
                   onChange={(e) => setCookTime(e.target.value)}
                   placeholder="30"
                   min="0"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
                 />
               </div>
 
               <div>
-                <label htmlFor="servings" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="servings" className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Servings
                 </label>
                 <input
@@ -201,12 +215,12 @@ export default function NewRecipePage() {
                   onChange={(e) => setServings(e.target.value)}
                   placeholder="4"
                   min="1"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
                 />
               </div>
 
               <div>
-                <label htmlFor="cuisine" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="cuisine" className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Cuisine
                 </label>
                 <input
@@ -215,20 +229,20 @@ export default function NewRecipePage() {
                   value={cuisine}
                   onChange={(e) => setCuisine(e.target.value)}
                   placeholder="Italian"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="category" className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Category
               </label>
               <select
                 id="category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
               >
                 <option value="">Select a category</option>
                 <option value="Breakfast">Breakfast</option>
@@ -242,58 +256,57 @@ export default function NewRecipePage() {
               </select>
             </div>
           </div>
+        </div>
 
-          {/* Ingredients */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Ingredients</h2>
-            <p className="text-sm text-gray-500 mb-2">Enter one ingredient per line</p>
-            <textarea
-              value={ingredientsText}
-              onChange={(e) => setIngredientsText(e.target.value)}
-              placeholder="1 cup flour
-2 eggs
-1/2 cup sugar
-1 tsp vanilla extract"
-              rows={8}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm"
-            />
-          </div>
+        {/* Ingredients */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <span className="text-2xl">🥘</span>
+            Ingredients
+          </h2>
+          <p className="text-sm text-gray-500 mb-3">Enter one ingredient per line</p>
+          <textarea
+            value={ingredientsText}
+            onChange={(e) => setIngredientsText(e.target.value)}
+            placeholder="1 cup flour&#10;2 eggs&#10;1/2 cup sugar&#10;1 tsp vanilla extract"
+            rows={7}
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm transition-shadow"
+          />
+        </div>
 
-          {/* Instructions */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Instructions</h2>
-            <p className="text-sm text-gray-500 mb-2">Enter one step per line</p>
-            <textarea
-              value={instructionsText}
-              onChange={(e) => setInstructionsText(e.target.value)}
-              placeholder="Preheat oven to 350°F
-Mix dry ingredients in a bowl
-Add wet ingredients and stir until combined
-Pour into baking pan
-Bake for 25-30 minutes"
-              rows={10}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm"
-            />
-          </div>
+        {/* Instructions */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <span className="text-2xl">👨‍🍳</span>
+            Instructions
+          </h2>
+          <p className="text-sm text-gray-500 mb-3">Enter one step per line</p>
+          <textarea
+            value={instructionsText}
+            onChange={(e) => setInstructionsText(e.target.value)}
+            placeholder="Preheat oven to 350°F&#10;Mix dry ingredients in a bowl&#10;Add wet ingredients and stir until combined&#10;Pour into baking pan&#10;Bake for 25-30 minutes"
+            rows={8}
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm transition-shadow"
+          />
+        </div>
 
-          {/* Submit */}
-          <div className="flex gap-4">
-            <button
-              type="submit"
-              disabled={loading || !name.trim()}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-            >
-              {loading ? 'Creating...' : 'Create Recipe'}
-            </button>
-            <Link
-              href="/dashboard/recipes"
-              className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
-            >
-              Cancel
-            </Link>
-          </div>
-        </form>
-      </div>
+        {/* Submit */}
+        <div className="sticky bottom-4 bg-white rounded-xl shadow-lg border border-gray-200 p-4 flex gap-3">
+          <button
+            type="submit"
+            disabled={loading || !name.trim()}
+            className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+          >
+            {loading ? 'Creating...' : 'Create Recipe'}
+          </button>
+          <Link
+            href="/dashboard/recipes"
+            className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
+          >
+            Cancel
+          </Link>
+        </div>
+      </form>
     </div>
   )
 }

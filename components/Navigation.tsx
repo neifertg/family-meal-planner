@@ -29,7 +29,7 @@ export default function Navigation() {
       <nav className="bg-white shadow-sm border-b border-gray-200">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <Link href="/dashboard" className="text-xl font-bold text-green-600">
+            <Link href="/dashboard" className="text-xl font-bold text-indigo-600">
               Family Meal Planner
             </Link>
 
@@ -39,10 +39,10 @@ export default function Navigation() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
+                  className={`px-4 py-2 rounded-lg transition-all duration-200 ${
                     pathname === item.href
-                      ? 'bg-green-50 text-green-700 font-semibold'
-                      : 'text-gray-600 hover:bg-gray-50'
+                      ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
                   <span className="mr-2">{item.icon}</span>
@@ -51,7 +51,7 @@ export default function Navigation() {
               ))}
               <button
                 onClick={handleLogout}
-                className="ml-4 px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                className="ml-4 px-4 py-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-all duration-200"
               >
                 Sign Out
               </button>
@@ -77,14 +77,14 @@ export default function Navigation() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center flex-1 h-full ${
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
                 pathname === item.href
-                  ? 'text-green-600'
+                  ? 'text-indigo-600'
                   : 'text-gray-500'
               }`}
             >
               <span className="text-xl mb-1">{item.icon}</span>
-              <span className="text-xs">{item.label}</span>
+              <span className="text-xs font-medium">{item.label}</span>
             </Link>
           ))}
         </div>

@@ -18,7 +18,11 @@ type ScrapedRecipe = {
 
 async function scrapeRecipe(url: string): Promise<ScrapedRecipe | null> {
   try {
-    const response = await fetch(url)
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    })
     const html = await response.text()
     const $ = cheerio.load(html)
 
@@ -68,28 +72,59 @@ async function scrapeRecipe(url: string): Promise<ScrapedRecipe | null> {
       ingredients = [recipeData.recipeIngredient]
     }
 
-    // Extract instructions
+    // Extract instructions with better handling for HowToStep objects
     let instructions: string[] = []
     if (Array.isArray(recipeData.recipeInstructions)) {
       instructions = recipeData.recipeInstructions.map((inst: any) => {
         if (typeof inst === 'string') return inst
+        if (inst['@type'] === 'HowToStep' && inst.text) return inst.text
         if (inst.text) return inst.text
-        return JSON.stringify(inst)
-      })
+        if (inst.itemListElement && Array.isArray(inst.itemListElement)) {
+          return inst.itemListElement.map((step: any) => step.text || '').join(' ')
+        }
+        return ''
+      }).filter(Boolean)
     } else if (typeof recipeData.recipeInstructions === 'string') {
       instructions = [recipeData.recipeInstructions]
+    } else if (recipeData.recipeInstructions?.itemListElement) {
+      // Handle HowToSection structure
+      instructions = recipeData.recipeInstructions.itemListElement.map((step: any) => step.text || '').filter(Boolean)
+    }
+
+    // Extract image - handle various formats
+    let imageUrl = ''
+    if (recipeData.image) {
+      if (typeof recipeData.image === 'string') {
+        imageUrl = recipeData.image
+      } else if (Array.isArray(recipeData.image)) {
+        imageUrl = recipeData.image[0]?.url || recipeData.image[0] || ''
+      } else if (recipeData.image.url) {
+        imageUrl = recipeData.image.url
+      }
+    }
+
+    // Extract servings - handle various formats
+    let servings = ''
+    if (recipeData.recipeYield) {
+      if (typeof recipeData.recipeYield === 'string') {
+        servings = recipeData.recipeYield
+      } else if (Array.isArray(recipeData.recipeYield)) {
+        servings = recipeData.recipeYield[0]?.toString() || ''
+      } else {
+        servings = recipeData.recipeYield.toString()
+      }
     }
 
     return {
       name: recipeData.name || '',
       description: recipeData.description || '',
-      image: recipeData.image?.url || recipeData.image || '',
+      image: imageUrl,
       ingredients,
       instructions,
       prepTime: recipeData.prepTime || '',
       cookTime: recipeData.cookTime || '',
       totalTime: recipeData.totalTime || '',
-      servings: recipeData.recipeYield?.toString() || '',
+      servings,
       cuisine: recipeData.recipeCuisine || '',
       category: recipeData.recipeCategory || '',
     }

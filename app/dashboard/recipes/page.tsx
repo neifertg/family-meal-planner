@@ -84,7 +84,7 @@ export default function RecipesPage() {
     <div>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl p-8 mb-8 text-white shadow-lg">
+        <div className="bg-gradient-to-r from-orange-500 via-pink-500 to-rose-500 rounded-2xl p-8 mb-8 text-white shadow-xl">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-4xl font-bold mb-2">My Recipes</h1>
@@ -95,18 +95,18 @@ export default function RecipesPage() {
             <div className="flex gap-3">
               <Link
                 href="/dashboard/recipes/new"
-                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 inline-flex items-center gap-2 hover:scale-105"
+                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-2.5 px-5 rounded-lg transition-all duration-200 inline-flex items-center gap-2 hover:scale-105"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Create Recipe
               </Link>
               <Link
                 href="/dashboard/recipes/import"
-                className="bg-white hover:bg-gray-100 text-orange-600 font-semibold py-3 px-6 rounded-xl transition-all duration-200 inline-flex items-center gap-2 shadow-lg hover:scale-105"
+                className="bg-white hover:bg-gray-100 text-rose-600 font-semibold py-2.5 px-5 rounded-lg transition-all duration-200 inline-flex items-center gap-2 shadow-lg hover:scale-105"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
                 Import Recipe
@@ -117,7 +117,7 @@ export default function RecipesPage() {
 
         {/* Search and Filters */}
         {recipes.length > 0 && (
-          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-6">
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 mb-6">
             <div className="flex flex-col md:flex-row gap-4">
               {/* Search */}
               <div className="flex-1">
@@ -247,7 +247,7 @@ export default function RecipesPage() {
               <Link
                 key={recipe.id}
                 href={`/dashboard/recipes/${recipe.id}`}
-                className="group bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-200 border border-gray-100 hover:scale-105"
+                className="group bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:scale-[1.02]"
               >
                 {/* Image */}
                 <div className="h-48 bg-gray-200 overflow-hidden">
