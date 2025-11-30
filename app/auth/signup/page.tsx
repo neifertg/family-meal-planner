@@ -40,6 +40,7 @@ export default function SignUpPage() {
           .insert({
             name: familyName,
             monthly_budget: monthlyBudget ? parseFloat(monthlyBudget) : null,
+            created_by: authData.user.id,
           } as any)
 
         if (familyError) throw familyError
