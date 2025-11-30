@@ -170,7 +170,7 @@ export default function RecipeDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center">
+      <div className="flex items-center justify-center py-12">
         <div className="text-gray-600">Loading recipe...</div>
       </div>
     )
@@ -178,7 +178,7 @@ export default function RecipeDetailPage() {
 
   if (error || !recipe) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center">
+      <div className="flex items-center justify-center py-12">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
           <div className="text-red-600 mb-4">{error || 'Recipe not found'}</div>
           <Link
@@ -193,17 +193,8 @@ export default function RecipeDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <Link
-            href="/dashboard/recipes"
-            className="text-green-600 hover:text-green-700 font-medium mb-4 inline-block"
-          >
-            ← Back to Recipes
-          </Link>
-        </div>
+    <div>
+      <div className="max-w-4xl mx-auto">
 
         {/* Edit Form */}
         {editing ? (
