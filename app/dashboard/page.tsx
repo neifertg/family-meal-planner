@@ -67,25 +67,33 @@ export default async function DashboardPage() {
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Link href="/dashboard/recipes" className="group bg-gradient-to-br from-orange-400 to-pink-500 p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-200 hover:scale-105">
-          <div className="text-xl mb-2">📖</div>
+          <svg className="w-6 h-6 text-white/80 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
           <div className="text-3xl font-bold text-white mb-1">{recipeCount || 0}</div>
           <div className="text-sm font-medium text-white/90">Recipes</div>
         </Link>
 
         <div className="bg-gradient-to-br from-cyan-400 to-blue-500 p-6 rounded-2xl shadow-md">
-          <div className="text-xl mb-2">📦</div>
+          <svg className="w-6 h-6 text-white/80 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
           <div className="text-3xl font-bold text-white mb-1">{inventoryCount || 0}</div>
           <div className="text-sm font-medium text-white/90">Inventory Items</div>
         </div>
 
         <div className="bg-gradient-to-br from-purple-400 to-indigo-500 p-6 rounded-2xl shadow-md">
-          <div className="text-xl mb-2">👨‍👩‍👧‍👦</div>
+          <svg className="w-6 h-6 text-white/80 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
           <div className="text-3xl font-bold text-white mb-1">{memberCount || 0}</div>
           <div className="text-sm font-medium text-white/90">Family Members</div>
         </div>
 
         <div className="bg-gradient-to-br from-emerald-400 to-teal-500 p-6 rounded-2xl shadow-md">
-          <div className="text-xl mb-2">💰</div>
+          <svg className="w-6 h-6 text-white/80 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           <div className="text-3xl font-bold text-white mb-1">
             {family?.monthly_budget ? `$${family.monthly_budget}` : '-'}
           </div>
@@ -97,8 +105,10 @@ export default async function DashboardPage() {
         {/* Upcoming Meals */}
         <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <span className="text-xl">🍽️</span>
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
               This Week's Meals
             </h2>
             <Link
@@ -167,8 +177,10 @@ export default async function DashboardPage() {
         {/* Expiring Soon */}
         <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <span className="text-xl">⏰</span>
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               Expiring Soon
             </h2>
             <Link
@@ -230,8 +242,10 @@ export default async function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
-        <h2 className="text-2xl font-bold text-gray-900 mb-5 flex items-center gap-2">
-          <span className="text-xl">⚡</span>
+        <h2 className="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+          <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
           Quick Actions
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -239,7 +253,9 @@ export default async function DashboardPage() {
             href="/dashboard/recipes"
             className="group flex flex-col items-center justify-center p-5 bg-gradient-to-br from-orange-400 to-pink-500 hover:from-orange-500 hover:to-pink-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
           >
-            <span className="text-xl mb-2 group-hover:scale-110 transition-transform">📖</span>
+            <svg className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
             <span className="text-sm font-semibold text-white">Manage Recipes</span>
           </Link>
 
@@ -247,7 +263,9 @@ export default async function DashboardPage() {
             href="/dashboard/recipes/import"
             className="group flex flex-col items-center justify-center p-5 bg-gradient-to-br from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
           >
-            <span className="text-xl mb-2 group-hover:scale-110 transition-transform">➕</span>
+            <svg className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
             <span className="text-sm font-semibold text-white">Import Recipe</span>
           </Link>
 
@@ -255,7 +273,9 @@ export default async function DashboardPage() {
             href="/dashboard/calendar"
             className="group flex flex-col items-center justify-center p-5 bg-gradient-to-br from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
           >
-            <span className="text-xl mb-2 group-hover:scale-110 transition-transform">📅</span>
+            <svg className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
             <span className="text-sm font-semibold text-white">Plan Week</span>
           </Link>
 
@@ -263,7 +283,9 @@ export default async function DashboardPage() {
             href="/dashboard/inventory"
             className="group flex flex-col items-center justify-center p-5 bg-gradient-to-br from-purple-400 to-indigo-500 hover:from-purple-500 hover:to-indigo-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
           >
-            <span className="text-xl mb-2 group-hover:scale-110 transition-transform">📦</span>
+            <svg className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
             <span className="text-sm font-semibold text-white">Add Inventory</span>
           </Link>
         </div>
