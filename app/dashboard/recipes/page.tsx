@@ -139,7 +139,7 @@ export default function RecipesPage() {
                     placeholder="Search recipes..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -150,7 +150,7 @@ export default function RecipesPage() {
                   <select
                     value={selectedCuisine}
                     onChange={(e) => setSelectedCuisine(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                   >
                     <option value="">All Cuisines</option>
                     {cuisines.map(cuisine => (
@@ -166,7 +166,7 @@ export default function RecipesPage() {
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                   >
                     <option value="">All Categories</option>
                     {categories.map(category => (
@@ -216,13 +216,13 @@ export default function RecipesPage() {
             <div className="flex justify-center gap-4">
               <Link
                 href="/dashboard/recipes/import"
-                className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                className="inline-block bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
               >
                 Import Recipe
               </Link>
               <Link
                 href="/dashboard/recipes/new"
-                className="inline-block bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors"
+                className="inline-block bg-gradient-to-r from-purple-500 to-rose-500 hover:from-purple-600 hover:to-rose-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
               >
                 Create Recipe
               </Link>
@@ -242,7 +242,7 @@ export default function RecipesPage() {
             </p>
             <button
               onClick={clearFilters}
-              className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              className="inline-block bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
             >
               Clear Filters
             </button>
@@ -289,12 +289,12 @@ export default function RecipesPage() {
                   {/* Tags */}
                   <div className="flex flex-wrap gap-2 mb-3">
                     {recipe.cuisine && (
-                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+                      <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
                         {recipe.cuisine}
                       </span>
                     )}
                     {recipe.category && (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+                      <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
                         {recipe.category}
                       </span>
                     )}
