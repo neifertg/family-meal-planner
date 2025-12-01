@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import Navigation from '@/components/Navigation'
+import Sidebar from '@/components/Sidebar'
 
 export default async function DashboardLayout({
   children,
@@ -18,11 +18,16 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <Navigation />
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
-        {children}
-      </main>
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar />
+      {/* Main Content Area */}
+      <div className="lg:pl-64">
+        <main className="min-h-screen">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

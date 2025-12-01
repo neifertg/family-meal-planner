@@ -55,13 +55,13 @@ export default async function DashboardPage() {
     .limit(5)
 
   return (
-    <div className="space-y-6 pb-20 md:pb-8">
+    <div className="space-y-6">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
-        <h1 className="text-4xl font-bold mb-2">
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-xl p-6 md:p-8 text-white shadow-lg">
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">
           Welcome back{family ? `, ${family.name}` : ''}!
         </h1>
-        <p className="text-blue-100 text-lg">Here's what's happening with your meal planning</p>
+        <p className="text-blue-100">Here's what's happening with your meal planning</p>
       </div>
 
       {/* Quick Stats */}
