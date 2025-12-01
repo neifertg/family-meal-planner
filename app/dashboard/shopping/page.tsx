@@ -19,26 +19,67 @@ export default function ShoppingListPage() {
   const [newItem, setNewItem] = useState('')
   const [newQuantity, setNewQuantity] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [familyId, setFamilyId] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
-    loadShoppingList()
+    loadFamilyId()
   }, [])
+
+  useEffect(() => {
+    if (familyId) {
+      loadShoppingList()
+    }
+  }, [familyId])
+
+  const loadFamilyId = async () => {
+    const { data: families, error } = await supabase
+      .from('families')
+      .select('id')
+      .single()
+
+    console.log('Family data loaded:', families, 'Error:', error)
+
+    if (families) {
+      setFamilyId(families.id)
+      console.log('Family ID set to:', families.id)
+    } else {
+      console.error('No family found')
+    }
+  }
 
   const loadShoppingList = async () => {
     setLoading(true)
-    const { data } = await supabase
+
+    if (!familyId) {
+      setLoading(false)
+      return
+    }
+
+    const { data, error } = await supabase
       .from('grocery_list_items')
       .select('*')
+      .eq('family_id', familyId)
       .order('is_checked')
       .order('category')
       .order('name')
+
+    if (error) {
+      console.error('Error loading shopping list:', error)
+    }
 
     if (data) setItems(data)
     setLoading(false)
   }
 
   const generateFromMealPlan = async () => {
+    console.log('Generate clicked, familyId:', familyId)
+
+    if (!familyId) {
+      alert('Family not found. Please refresh the page.')
+      return
+    }
+
     setGenerating(true)
     try {
       // Get upcoming meal plans (next 7 days)
@@ -47,7 +88,9 @@ export default function ShoppingListPage() {
       weekLater.setDate(weekLater.getDate() + 7)
       const weekLaterStr = weekLater.toISOString().split('T')[0]
 
-      const { data: mealPlans } = await supabase
+      console.log('Fetching meal plans from', today, 'to', weekLaterStr)
+
+      const { data: mealPlans, error: mealPlansError } = await supabase
         .from('meal_plans')
         .select(`
           *,
@@ -61,6 +104,15 @@ export default function ShoppingListPage() {
         .lte('planned_date', weekLaterStr)
         .eq('is_completed', false)
 
+      console.log('Meal plans fetched:', mealPlans, 'Error:', mealPlansError)
+
+      if (mealPlansError) {
+        console.error('Error fetching meal plans:', mealPlansError)
+        alert(`Failed to fetch meal plans: ${mealPlansError.message}`)
+        setGenerating(false)
+        return
+      }
+
       if (!mealPlans || mealPlans.length === 0) {
         alert('No upcoming meals planned. Add meals to your calendar first!')
         setGenerating(false)
@@ -71,6 +123,7 @@ export default function ShoppingListPage() {
       await supabase
         .from('grocery_list_items')
         .delete()
+        .eq('family_id', familyId)
         .not('recipe_id', 'is', null)
 
       // Aggregate ingredients from all recipes
@@ -103,6 +156,7 @@ export default function ShoppingListPage() {
 
       // Insert all aggregated ingredients
       const itemsToInsert = Array.from(ingredientMap.entries()).map(([key, value]) => ({
+        family_id: familyId,
         name: value.quantity,
         quantity: null,
         category: categorizeIngredient(value.quantity),
@@ -111,9 +165,16 @@ export default function ShoppingListPage() {
       }))
 
       if (itemsToInsert.length > 0) {
-        await supabase
+        const { error: insertError } = await supabase
           .from('grocery_list_items')
           .insert(itemsToInsert)
+
+        if (insertError) {
+          console.error('Error inserting items:', insertError)
+          alert(`Failed to insert items: ${insertError.message}`)
+          setGenerating(false)
+          return
+        }
       }
 
       loadShoppingList()
@@ -129,9 +190,15 @@ export default function ShoppingListPage() {
     e.preventDefault()
     if (!newItem.trim()) return
 
+    if (!familyId) {
+      alert('Family not found. Please refresh the page.')
+      return
+    }
+
     const { error } = await supabase
       .from('grocery_list_items')
       .insert({
+        family_id: familyId,
         name: newItem,
         quantity: newQuantity || null,
         category: categorizeIngredient(newItem),
@@ -139,7 +206,10 @@ export default function ShoppingListPage() {
         recipe_id: null
       })
 
-    if (!error) {
+    if (error) {
+      console.error('Error adding item:', error)
+      alert(`Failed to add item: ${error.message}`)
+    } else {
       setNewItem('')
       setNewQuantity('')
       loadShoppingList()
@@ -165,9 +235,12 @@ export default function ShoppingListPage() {
   }
 
   const clearCompleted = async () => {
+    if (!familyId) return
+
     const { error } = await supabase
       .from('grocery_list_items')
       .delete()
+      .eq('family_id', familyId)
       .eq('is_checked', true)
 
     if (!error) loadShoppingList()
@@ -175,11 +248,12 @@ export default function ShoppingListPage() {
 
   const clearAll = async () => {
     if (!confirm('Are you sure you want to clear all items?')) return
+    if (!familyId) return
 
     const { error } = await supabase
       .from('grocery_list_items')
       .delete()
-      .gte('id', '00000000-0000-0000-0000-000000000000')
+      .eq('family_id', familyId)
 
     if (!error) loadShoppingList()
   }
