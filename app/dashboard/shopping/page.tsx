@@ -139,7 +139,10 @@ export default function ShoppingListPage() {
 
         ingredients.forEach((ingredient: string) => {
           const parsed = parseIngredient(ingredient)
-          const itemKey = parsed.item.toLowerCase()
+          const existingKeys = Array.from(ingredientMap.keys())
+
+          // Use fuzzy matching to find similar ingredients
+          const itemKey = findOrCreateIngredientKey(parsed.item, existingKeys)
 
           if (ingredientMap.has(itemKey)) {
             const existing = ingredientMap.get(itemKey)!
@@ -426,68 +429,182 @@ export default function ShoppingListPage() {
   )
 }
 
-// Normalize ingredient name to handle variations
-function normalizeIngredientName(name: string): string {
-  let normalized = name.toLowerCase().trim()
+// Extract core ingredient by removing all descriptors and modifiers
+function extractCoreIngredient(name: string): string {
+  let core = name.toLowerCase().trim()
 
   // Remove parentheses and their contents
-  normalized = normalized.replace(/\([^)]*\)/g, '').trim()
+  core = core.replace(/\([^)]*\)/g, '').trim()
+  core = core.replace(/\[[^\]]*\]/g, '').trim()
 
-  // Remove common descriptors and variations
-  const descriptors = [
+  // Remove all measurement-related words that might have been missed
+  core = core.replace(/\b(about|approximately|roughly|around)\b/gi, '').trim()
+
+  // Comprehensive list of descriptors to remove - anything that's optional shopping preference
+  const allDescriptors = [
+    // Preparation methods
     'fresh', 'frozen', 'canned', 'dried', 'chopped', 'diced', 'sliced',
-    'minced', 'crushed', 'ground', 'boneless', 'skinless', 'raw', 'cooked',
-    'large', 'medium', 'small', 'whole', 'shredded', 'grated', 'crumbled',
-    'organic', 'free-range', 'grass-fed', 'wild-caught', 'extra-virgin',
-    'unsalted', 'salted', 'sweetened', 'unsweetened', 'reduced-fat', 'low-fat',
-    'fat-free', 'sodium-free', 'gluten-free', 'peeled', 'deveined', 'trimmed',
-    'rotisserie', 'roasted', 'grilled', 'baked', 'fried'
+    'minced', 'crushed', 'ground', 'shredded', 'grated', 'crumbled',
+    'peeled', 'deveined', 'trimmed', 'cut', 'halved', 'quartered',
+    'julienned', 'cubed', 'chunked', 'mashed', 'pureed', 'blended',
+
+    // Cooking states
+    'raw', 'cooked', 'pre-cooked', 'uncooked', 'blanched', 'roasted',
+    'grilled', 'baked', 'fried', 'sauteed', 'steamed', 'boiled',
+    'rotisserie', 'smoked', 'cured', 'marinated',
+
+    // Quality/source descriptors (user decides at store)
+    'organic', 'natural', 'fresh', 'premium', 'artisan', 'local',
+    'imported', 'domestic', 'homemade', 'store-bought',
+    'free-range', 'cage-free', 'grass-fed', 'pasture-raised',
+    'wild-caught', 'farm-raised', 'sustainable',
+
+    // Health/diet descriptors (user decides at store)
+    'low-fat', 'reduced-fat', 'fat-free', 'nonfat', 'whole', 'skim',
+    'low-sodium', 'reduced-sodium', 'sodium-free', 'no-salt', 'unsalted', 'salted',
+    'low-sugar', 'sugar-free', 'unsweetened', 'sweetened', 'no-sugar-added',
+    'gluten-free', 'dairy-free', 'vegan', 'vegetarian',
+    'light', 'lite', 'diet', 'reduced-calorie',
+
+    // Quality/grade descriptors
+    'extra-virgin', 'virgin', 'pure', 'refined', 'unrefined',
+    'grade-a', 'grade-b', 'choice', 'select', 'prime',
+
+    // Physical descriptors
+    'large', 'medium', 'small', 'extra-large', 'jumbo', 'baby', 'mini',
+    'thick', 'thin', 'fine', 'coarse', 'whole', 'half', 'pieces',
+    'boneless', 'bone-in', 'skinless', 'skin-on',
+
+    // Color descriptors (usually optional)
+    'white', 'red', 'green', 'yellow', 'black', 'brown', 'golden'
   ]
 
-  descriptors.forEach(descriptor => {
+  // Remove descriptors
+  allDescriptors.forEach(descriptor => {
     const regex = new RegExp(`\\b${descriptor}\\b`, 'gi')
-    normalized = normalized.replace(regex, '').trim()
+    core = core.replace(regex, '').trim()
   })
 
-  // Normalize common variations to a standard form
-  const variations: Record<string, string> = {
-    'chickens': 'chicken',
+  // Normalize plurals to singular for better matching
+  const pluralToSingular: Record<string, string> = {
     'tomatoes': 'tomato',
-    'onions': 'onion',
     'potatoes': 'potato',
+    'onions': 'onion',
     'carrots': 'carrot',
-    'garlic cloves': 'garlic',
-    'cloves garlic': 'garlic',
+    'peppers': 'pepper',
+    'mushrooms': 'mushroom',
+    'chickens': 'chicken',
+    'eggs': 'egg',
+    'beans': 'bean',
+    'peas': 'pea',
+    'berries': 'berry'
+  }
+
+  // Apply plural to singular
+  Object.entries(pluralToSingular).forEach(([plural, singular]) => {
+    const regex = new RegExp(`\\b${plural}\\b`, 'gi')
+    core = core.replace(regex, singular)
+  })
+
+  // Normalize specific ingredient variations to canonical form
+  const canonicalForms: Record<string, string> = {
+    // Chicken parts all become "chicken"
     'chicken breast': 'chicken',
-    'chicken breasts': 'chicken',
     'chicken thigh': 'chicken',
-    'chicken thighs': 'chicken',
+    'chicken leg': 'chicken',
+    'chicken wing': 'chicken',
     'chicken drumstick': 'chicken',
-    'chicken drumsticks': 'chicken',
+    'chicken tender': 'chicken',
+
+    // Stock = broth
     'chicken stock': 'chicken broth',
     'beef stock': 'beef broth',
     'vegetable stock': 'vegetable broth',
-    'olive oil': 'oil',
-    'vegetable oil': 'oil',
-    'canola oil': 'oil',
-    'soy sauce': 'soy sauce',
-    'white rice': 'rice',
-    'brown rice': 'rice',
+
+    // All oils become "cooking oil" unless specific type is in the name
+    'olive oil': 'olive oil',
+    'vegetable oil': 'cooking oil',
+    'canola oil': 'cooking oil',
+    'sunflower oil': 'cooking oil',
+    'corn oil': 'cooking oil',
+
+    // Garlic variations
+    'garlic clove': 'garlic',
+    'clove garlic': 'garlic',
+
+    // Dairy
+    'heavy cream': 'cream',
+    'whipping cream': 'cream',
+    'half-and-half': 'cream',
+
+    // Rice types (keep main variety but remove sub-types)
     'jasmine rice': 'rice',
-    'basmati rice': 'rice'
+    'basmati rice': 'rice',
+    'arborio rice': 'rice',
+    'long-grain rice': 'rice',
+    'short-grain rice': 'rice'
   }
 
-  // Check for variations
-  for (const [variant, standard] of Object.entries(variations)) {
-    if (normalized.includes(variant)) {
-      normalized = normalized.replace(variant, standard)
+  // Apply canonical forms
+  for (const [variant, canonical] of Object.entries(canonicalForms)) {
+    if (core.includes(variant)) {
+      core = canonical
+      break
     }
   }
 
-  // Remove extra whitespace
-  normalized = normalized.replace(/\s+/g, ' ').trim()
+  // Remove extra whitespace and articles
+  core = core.replace(/\s+/g, ' ').trim()
+  core = core.replace(/^(a|an|the)\s+/gi, '').trim()
 
-  return normalized || name
+  return core || name
+}
+
+// Calculate similarity between two strings (for fuzzy matching)
+function stringSimilarity(str1: string, str2: string): number {
+  const s1 = str1.toLowerCase()
+  const s2 = str2.toLowerCase()
+
+  // Exact match
+  if (s1 === s2) return 1.0
+
+  // One contains the other
+  if (s1.includes(s2) || s2.includes(s1)) {
+    return 0.85
+  }
+
+  // Levenshtein-like similarity (simplified)
+  const longer = s1.length > s2.length ? s1 : s2
+  const shorter = s1.length > s2.length ? s2 : s1
+
+  let matches = 0
+  for (let i = 0; i < shorter.length; i++) {
+    if (longer.includes(shorter[i])) {
+      matches++
+    }
+  }
+
+  return matches / longer.length
+}
+
+// Find best matching ingredient key or create new one
+function findOrCreateIngredientKey(
+  newIngredient: string,
+  existingKeys: string[],
+  threshold: number = 0.75
+): string {
+  const newCore = extractCoreIngredient(newIngredient)
+
+  // Look for existing similar ingredient
+  for (const existingKey of existingKeys) {
+    const similarity = stringSimilarity(newCore, existingKey)
+    if (similarity >= threshold) {
+      return existingKey
+    }
+  }
+
+  // No match found, return the new core ingredient
+  return newCore
 }
 
 // Parse ingredient string to extract item name and quantity
@@ -504,11 +621,11 @@ function parseIngredient(ingredient: string): { item: string; quantity: string; 
   itemName = itemName.split(',')[0].trim() // Remove anything after comma (like ", chopped")
   itemName = itemName.split('(')[0].trim() // Remove anything in parentheses
 
-  // Normalize the item name to handle variations
-  const normalizedName = normalizeIngredientName(itemName)
+  // Extract core ingredient (removes all optional descriptors)
+  const coreIngredient = extractCoreIngredient(itemName)
 
   return {
-    item: normalizedName || text,
+    item: coreIngredient || text,
     quantity: text,
     fullText: text
   }
