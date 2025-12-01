@@ -82,7 +82,7 @@ export default function RecipeImportPage() {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://www.example.com/recipe"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                 required
                 disabled={loading}
               />
@@ -100,7 +100,7 @@ export default function RecipeImportPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              className="w-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
             >
               {loading ? 'Importing...' : 'Import Recipe'}
             </button>
@@ -110,13 +110,13 @@ export default function RecipeImportPage() {
         {/* Success Message */}
         {recipe && (
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-start gap-4 p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
-              <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-start gap-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg mb-4">
+              <svg className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <div className="flex-1">
-                <h3 className="font-semibold text-green-900">Recipe imported successfully!</h3>
-                <p className="text-green-700 text-sm mt-1">
+                <h3 className="font-semibold text-emerald-900">Recipe imported successfully!</h3>
+                <p className="text-emerald-700 text-sm mt-1">
                   Your recipe has been saved to your collection.
                 </p>
               </div>
@@ -154,7 +154,7 @@ export default function RecipeImportPage() {
               <div className="flex gap-3">
                 <Link
                   href={`/dashboard/recipes/${recipe.id}`}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg text-center transition-colors"
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-rose-500 hover:from-purple-600 hover:to-rose-600 text-white font-semibold py-3 px-6 rounded-lg text-center transition-all duration-200 shadow-md hover:shadow-lg"
                 >
                   View Recipe
                 </Link>
