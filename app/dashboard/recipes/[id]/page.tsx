@@ -183,7 +183,7 @@ export default function RecipeDetailPage() {
           <div className="text-red-600 mb-4">{error || 'Recipe not found'}</div>
           <Link
             href="/dashboard/recipes"
-            className="text-green-600 hover:text-green-700 font-medium"
+            className="text-rose-600 hover:text-rose-700 font-medium"
           >
             ← Back to Recipes
           </Link>
@@ -218,7 +218,7 @@ export default function RecipeDetailPage() {
                   id="name"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                   required
                 />
               </div>
@@ -232,7 +232,7 @@ export default function RecipeDetailPage() {
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                 />
               </div>
 
@@ -245,7 +245,7 @@ export default function RecipeDetailPage() {
                   id="imageUrl"
                   value={editImageUrl}
                   onChange={(e) => setEditImageUrl(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                 />
               </div>
 
@@ -260,7 +260,7 @@ export default function RecipeDetailPage() {
                     value={editPrepTime}
                     onChange={(e) => setEditPrepTime(e.target.value)}
                     min="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                   />
                 </div>
 
@@ -274,7 +274,7 @@ export default function RecipeDetailPage() {
                     value={editCookTime}
                     onChange={(e) => setEditCookTime(e.target.value)}
                     min="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                   />
                 </div>
 
@@ -288,7 +288,7 @@ export default function RecipeDetailPage() {
                     value={editServings}
                     onChange={(e) => setEditServings(e.target.value)}
                     min="1"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                   />
                 </div>
 
@@ -301,7 +301,7 @@ export default function RecipeDetailPage() {
                     id="cuisine"
                     value={editCuisine}
                     onChange={(e) => setEditCuisine(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -314,7 +314,7 @@ export default function RecipeDetailPage() {
                   id="category"
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                 >
                   <option value="">Select a category</option>
                   <option value="Breakfast">Breakfast</option>
@@ -337,7 +337,7 @@ export default function RecipeDetailPage() {
                 value={editIngredientsText}
                 onChange={(e) => setEditIngredientsText(e.target.value)}
                 rows={8}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-mono text-sm"
               />
             </div>
 
@@ -349,7 +349,7 @@ export default function RecipeDetailPage() {
                 value={editInstructionsText}
                 onChange={(e) => setEditInstructionsText(e.target.value)}
                 rows={10}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-mono text-sm"
               />
             </div>
 
@@ -358,7 +358,7 @@ export default function RecipeDetailPage() {
               <button
                 type="submit"
                 disabled={saving || !editName.trim()}
-                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
@@ -395,12 +395,12 @@ export default function RecipeDetailPage() {
                 {/* Tags */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   {recipe.cuisine && (
-                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                    <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
                       {recipe.cuisine}
                     </span>
                   )}
                   {recipe.category && (
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                    <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
                       {recipe.category}
                     </span>
                   )}
@@ -451,7 +451,7 @@ export default function RecipeDetailPage() {
                   <ul className="space-y-2">
                     {recipe.ingredients.map((ingredient, index) => (
                       <li key={index} className="flex items-start gap-2">
-                        <span className="text-green-600 mt-1">•</span>
+                        <span className="text-rose-500 mt-1">•</span>
                         <span className="text-gray-700">{ingredient}</span>
                       </li>
                     ))}
@@ -464,7 +464,7 @@ export default function RecipeDetailPage() {
                   <ol className="space-y-4">
                     {recipe.instructions.map((instruction, index) => (
                       <li key={index} className="flex gap-3">
-                        <span className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                        <span className="flex-shrink-0 w-6 h-6 bg-gradient-to-br from-rose-500 to-pink-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
                           {index + 1}
                         </span>
                         <span className="text-gray-700 flex-1">{instruction}</span>
@@ -481,7 +481,7 @@ export default function RecipeDetailPage() {
                     href={recipe.source_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-2"
+                    className="text-rose-600 hover:text-rose-700 font-medium inline-flex items-center gap-2"
                   >
                     View Original Recipe
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -495,7 +495,7 @@ export default function RecipeDetailPage() {
               <div className="mt-8 flex gap-3">
                 <button
                   onClick={startEditing}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-rose-500 hover:from-purple-600 hover:to-rose-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
                 >
                   Edit Recipe
                 </button>
