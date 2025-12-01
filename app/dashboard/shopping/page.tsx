@@ -126,8 +126,8 @@ export default function ShoppingListPage() {
         .eq('family_id', familyId)
         .not('recipe_id', 'is', null)
 
-      // Aggregate ingredients from all recipes
-      const ingredientMap = new Map<string, { quantity: string; recipeId: string }>()
+      // Aggregate ingredients from all recipes with smart consolidation
+      const ingredientMap = new Map<string, { quantities: string[]; recipeIds: Set<string> }>()
 
       mealPlans.forEach((plan: any) => {
         const recipe = plan.recipes
@@ -138,31 +138,38 @@ export default function ShoppingListPage() {
           : recipe.ingredients.ingredients || []
 
         ingredients.forEach((ingredient: string) => {
-          const normalized = ingredient.toLowerCase().trim()
-          if (ingredientMap.has(normalized)) {
-            // For now, just keep track of one recipe (could aggregate quantities later)
-            ingredientMap.set(normalized, {
-              quantity: ingredientMap.get(normalized)!.quantity,
-              recipeId: recipe.id
-            })
+          const parsed = parseIngredient(ingredient)
+          const itemKey = parsed.item.toLowerCase()
+
+          if (ingredientMap.has(itemKey)) {
+            const existing = ingredientMap.get(itemKey)!
+            existing.quantities.push(parsed.fullText)
+            existing.recipeIds.add(recipe.id)
           } else {
-            ingredientMap.set(normalized, {
-              quantity: ingredient,
-              recipeId: recipe.id
+            ingredientMap.set(itemKey, {
+              quantities: [parsed.fullText],
+              recipeIds: new Set([recipe.id])
             })
           }
         })
       })
 
-      // Insert all aggregated ingredients
-      const itemsToInsert = Array.from(ingredientMap.entries()).map(([key, value]) => ({
-        family_id: familyId,
-        name: value.quantity,
-        quantity: null,
-        category: categorizeIngredient(value.quantity),
-        is_checked: false,
-        recipe_id: value.recipeId
-      }))
+      console.log('Aggregated ingredients:', ingredientMap)
+
+      // Insert all aggregated ingredients with combined quantities
+      const itemsToInsert = Array.from(ingredientMap.entries()).map(([itemName, value]) => {
+        const combinedQty = combineQuantities(value.quantities)
+        const firstRecipeId = Array.from(value.recipeIds)[0]
+
+        return {
+          family_id: familyId,
+          name: itemName,
+          quantity: combinedQty,
+          category: categorizeIngredient(itemName),
+          is_checked: false,
+          recipe_id: firstRecipeId
+        }
+      })
 
       if (itemsToInsert.length > 0) {
         const { error: insertError } = await supabase
@@ -419,22 +426,107 @@ export default function ShoppingListPage() {
   )
 }
 
+// Parse ingredient string to extract item name and quantity
+function parseIngredient(ingredient: string): { item: string; quantity: string; fullText: string } {
+  const text = ingredient.trim()
+
+  // Common patterns: "2 cups chicken broth", "1 lb ground beef", "3 large eggs"
+  // Extract the main item by removing quantities and measurements
+  const measurementWords = /^(\d+\/?\d*|\d*\.?\d+)?\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|large|medium|small|whole)s?\s*/gi
+
+  let itemName = text.replace(measurementWords, '').trim()
+
+  // Remove common descriptors at the beginning
+  itemName = itemName.replace(/^(fresh|frozen|canned|dried|chopped|diced|sliced|minced|crushed|ground|boneless|skinless|raw|cooked)\s+/gi, '')
+
+  // Clean up and get the core ingredient name
+  itemName = itemName.split(',')[0].trim() // Remove anything after comma (like ", chopped")
+
+  return {
+    item: itemName || text,
+    quantity: text,
+    fullText: text
+  }
+}
+
+// Combine multiple quantity strings intelligently
+function combineQuantities(quantities: string[]): string {
+  if (quantities.length === 1) {
+    return quantities[0]
+  }
+
+  // Try to parse and add numeric quantities
+  const parsedQuantities: { value: number; unit: string; original: string }[] = []
+  const unparseable: string[] = []
+
+  quantities.forEach(qty => {
+    const match = qty.match(/^(\d+\.?\d*|\d*\.?\d+|(\d+\s+)?\d+\/\d+)\s*([a-zA-Z]+)/)
+    if (match) {
+      let value: number
+      const numStr = match[1].trim()
+
+      // Handle fractions like "1/2" or "1 1/2"
+      if (numStr.includes('/')) {
+        const parts = numStr.split(/\s+/)
+        if (parts.length === 2) {
+          // "1 1/2" format
+          const whole = parseInt(parts[0])
+          const [num, den] = parts[1].split('/').map(Number)
+          value = whole + (num / den)
+        } else {
+          // "1/2" format
+          const [num, den] = numStr.split('/').map(Number)
+          value = num / den
+        }
+      } else {
+        value = parseFloat(numStr)
+      }
+
+      const unit = match[3] || ''
+      parsedQuantities.push({ value, unit: unit.toLowerCase(), original: qty })
+    } else {
+      unparseable.push(qty)
+    }
+  })
+
+  // Group by unit and sum
+  const unitGroups = new Map<string, number>()
+  parsedQuantities.forEach(({ value, unit }) => {
+    unitGroups.set(unit, (unitGroups.get(unit) || 0) + value)
+  })
+
+  // Format combined quantities
+  const combined: string[] = []
+  unitGroups.forEach((total, unit) => {
+    // Format nicely (e.g., 2.5 cups, 3 lbs)
+    const formatted = total % 1 === 0 ? total.toString() : total.toFixed(1)
+    combined.push(`${formatted} ${unit}${total > 1 && !unit.endsWith('s') ? 's' : ''}`)
+  })
+
+  // Add unparseable items
+  if (unparseable.length > 0) {
+    combined.push(...unparseable.map(u => `(${u})`))
+  }
+
+  return combined.join(' + ') || quantities.join(', ')
+}
+
 function categorizeIngredient(ingredient: string): string {
   const lower = ingredient.toLowerCase()
 
-  if (/(apple|banana|orange|lettuce|tomato|carrot|onion|garlic|pepper|fruit|vegetable)/i.test(lower)) {
+  if (/(apple|banana|orange|lettuce|tomato|carrot|onion|garlic|pepper|fruit|vegetable|spinach|kale|broccoli|cauliflower|potato|celery|cucumber|zucchini|mushroom)/i.test(lower)) {
     return 'produce'
   }
-  if (/(milk|cheese|yogurt|butter|cream|dairy)/i.test(lower)) {
+  if (/(milk|cheese|yogurt|butter|cream|dairy|egg|eggs)/i.test(lower)) {
     return 'dairy'
   }
-  if (/(chicken|beef|pork|fish|salmon|meat|turkey)/i.test(lower)) {
+  if (/(chicken|beef|pork|fish|salmon|meat|turkey|lamb|shrimp|bacon|sausage)/i.test(lower)) {
     return 'meat'
   }
   if (/(frozen|ice cream)/i.test(lower)) {
     return 'frozen'
   }
-  if (/(flour|sugar|rice|pasta|oil|spice|salt|pepper|bread)/i.test(lower)) {
+  if (/(flour|sugar|rice|pasta|oil|spice|salt|pepper|bread|broth|stock|sauce|vinegar|soy sauce|honey|syrup)/i.test(lower)) {
     return 'pantry'
   }
 
