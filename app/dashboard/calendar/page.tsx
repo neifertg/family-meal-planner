@@ -34,12 +34,31 @@ export default function CalendarPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSlot, setSelectedSlot] = useState<{ date: string; mealType: string } | null>(null)
+  const [familyId, setFamilyId] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
-    loadWeekData()
-    loadRecipes()
-  }, [weekStart])
+    loadFamilyId()
+  }, [])
+
+  useEffect(() => {
+    if (familyId) {
+      loadWeekData()
+      loadRecipes()
+    }
+  }, [weekStart, familyId])
+
+  const loadFamilyId = async () => {
+    // Get the user's family_id
+    const { data: families } = await supabase
+      .from('families')
+      .select('id')
+      .single()
+
+    if (families) {
+      setFamilyId(families.id)
+    }
+  }
 
   const loadWeekData = async () => {
     setLoading(true)
@@ -104,15 +123,26 @@ export default function CalendarPage() {
   }
 
   const assignRecipe = async (recipeId: string, date: string, mealType: string) => {
+    if (!familyId) {
+      alert('Family not found. Please refresh the page.')
+      return
+    }
+
     const { error } = await supabase
       .from('meal_plans')
       .upsert({
+        family_id: familyId,
         recipe_id: recipeId,
         planned_date: date,
         meal_type: mealType
+      }, {
+        onConflict: 'family_id,planned_date,meal_type'
       })
 
-    if (!error) {
+    if (error) {
+      console.error('Error assigning recipe:', error)
+      alert(`Failed to add meal: ${error.message}`)
+    } else {
       loadWeekData()
       setSelectedSlot(null)
     }
