@@ -426,6 +426,70 @@ export default function ShoppingListPage() {
   )
 }
 
+// Normalize ingredient name to handle variations
+function normalizeIngredientName(name: string): string {
+  let normalized = name.toLowerCase().trim()
+
+  // Remove parentheses and their contents
+  normalized = normalized.replace(/\([^)]*\)/g, '').trim()
+
+  // Remove common descriptors and variations
+  const descriptors = [
+    'fresh', 'frozen', 'canned', 'dried', 'chopped', 'diced', 'sliced',
+    'minced', 'crushed', 'ground', 'boneless', 'skinless', 'raw', 'cooked',
+    'large', 'medium', 'small', 'whole', 'shredded', 'grated', 'crumbled',
+    'organic', 'free-range', 'grass-fed', 'wild-caught', 'extra-virgin',
+    'unsalted', 'salted', 'sweetened', 'unsweetened', 'reduced-fat', 'low-fat',
+    'fat-free', 'sodium-free', 'gluten-free', 'peeled', 'deveined', 'trimmed',
+    'rotisserie', 'roasted', 'grilled', 'baked', 'fried'
+  ]
+
+  descriptors.forEach(descriptor => {
+    const regex = new RegExp(`\\b${descriptor}\\b`, 'gi')
+    normalized = normalized.replace(regex, '').trim()
+  })
+
+  // Normalize common variations to a standard form
+  const variations: Record<string, string> = {
+    'chickens': 'chicken',
+    'tomatoes': 'tomato',
+    'onions': 'onion',
+    'potatoes': 'potato',
+    'carrots': 'carrot',
+    'garlic cloves': 'garlic',
+    'cloves garlic': 'garlic',
+    'chicken breast': 'chicken',
+    'chicken breasts': 'chicken',
+    'chicken thigh': 'chicken',
+    'chicken thighs': 'chicken',
+    'chicken drumstick': 'chicken',
+    'chicken drumsticks': 'chicken',
+    'chicken stock': 'chicken broth',
+    'beef stock': 'beef broth',
+    'vegetable stock': 'vegetable broth',
+    'olive oil': 'oil',
+    'vegetable oil': 'oil',
+    'canola oil': 'oil',
+    'soy sauce': 'soy sauce',
+    'white rice': 'rice',
+    'brown rice': 'rice',
+    'jasmine rice': 'rice',
+    'basmati rice': 'rice'
+  }
+
+  // Check for variations
+  for (const [variant, standard] of Object.entries(variations)) {
+    if (normalized.includes(variant)) {
+      normalized = normalized.replace(variant, standard)
+    }
+  }
+
+  // Remove extra whitespace
+  normalized = normalized.replace(/\s+/g, ' ').trim()
+
+  return normalized || name
+}
+
 // Parse ingredient string to extract item name and quantity
 function parseIngredient(ingredient: string): { item: string; quantity: string; fullText: string } {
   const text = ingredient.trim()
@@ -436,14 +500,15 @@ function parseIngredient(ingredient: string): { item: string; quantity: string; 
 
   let itemName = text.replace(measurementWords, '').trim()
 
-  // Remove common descriptors at the beginning
-  itemName = itemName.replace(/^(fresh|frozen|canned|dried|chopped|diced|sliced|minced|crushed|ground|boneless|skinless|raw|cooked)\s+/gi, '')
-
   // Clean up and get the core ingredient name
   itemName = itemName.split(',')[0].trim() // Remove anything after comma (like ", chopped")
+  itemName = itemName.split('(')[0].trim() // Remove anything in parentheses
+
+  // Normalize the item name to handle variations
+  const normalizedName = normalizeIngredientName(itemName)
 
   return {
-    item: itemName || text,
+    item: normalizedName || text,
     quantity: text,
     fullText: text
   }
@@ -457,9 +522,10 @@ function combineQuantities(quantities: string[]): string {
 
   // Try to parse and add numeric quantities
   const parsedQuantities: { value: number; unit: string; original: string }[] = []
-  const unparseable: string[] = []
+  const itemCounts = new Map<string, number>() // For counting items like "3 cans"
 
   quantities.forEach(qty => {
+    // Try to match quantity + unit pattern
     const match = qty.match(/^(\d+\.?\d*|\d*\.?\d+|(\d+\s+)?\d+\/\d+)\s*([a-zA-Z]+)/)
     if (match) {
       let value: number
@@ -485,7 +551,13 @@ function combineQuantities(quantities: string[]): string {
       const unit = match[3] || ''
       parsedQuantities.push({ value, unit: unit.toLowerCase(), original: qty })
     } else {
-      unparseable.push(qty)
+      // Try to extract just a count (e.g., "3 cans", "2 packages")
+      const countMatch = qty.match(/^(\d+)/)
+      if (countMatch) {
+        const count = parseInt(countMatch[1])
+        const key = 'items'
+        itemCounts.set(key, (itemCounts.get(key) || 0) + count)
+      }
     }
   })
 
@@ -497,18 +569,26 @@ function combineQuantities(quantities: string[]): string {
 
   // Format combined quantities
   const combined: string[] = []
+
   unitGroups.forEach((total, unit) => {
     // Format nicely (e.g., 2.5 cups, 3 lbs)
     const formatted = total % 1 === 0 ? total.toString() : total.toFixed(1)
     combined.push(`${formatted} ${unit}${total > 1 && !unit.endsWith('s') ? 's' : ''}`)
   })
 
-  // Add unparseable items
-  if (unparseable.length > 0) {
-    combined.push(...unparseable.map(u => `(${u})`))
+  // Add item counts
+  itemCounts.forEach((count, key) => {
+    if (count > 0) {
+      combined.push(`${count} needed`)
+    }
+  })
+
+  // If nothing was parseable, just show the count
+  if (combined.length === 0) {
+    return `${quantities.length} needed`
   }
 
-  return combined.join(' + ') || quantities.join(', ')
+  return combined.join(', ')
 }
 
 function categorizeIngredient(ingredient: string): string {
