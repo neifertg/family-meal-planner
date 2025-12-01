@@ -611,11 +611,12 @@ function findOrCreateIngredientKey(
 function parseIngredient(ingredient: string): { item: string; quantity: string; fullText: string } {
   const text = ingredient.trim()
 
-  // Common patterns: "2 cups chicken broth", "1 lb ground beef", "3 large eggs"
-  // Extract the main item by removing quantities and measurements
-  const measurementWords = /^(\d+\/?\d*|\d*\.?\d+)?\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|large|medium|small|whole)s?\s*/gi
+  // Common patterns: "2 cups chicken broth", "1 lb ground beef", "3 eggs"
+  // Extract the main item by removing quantities and measurements from the beginning only
+  // Note: size descriptors (large/medium/small) are handled in extractCoreIngredient
+  const measurementPattern = /^(\d+\/?\d*|\d*\.?\d+)?\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|whole)s?\s+/i
 
-  let itemName = text.replace(measurementWords, '').trim()
+  let itemName = text.replace(measurementPattern, '').trim()
 
   // Clean up and get the core ingredient name
   itemName = itemName.split(',')[0].trim() // Remove anything after comma (like ", chopped")
