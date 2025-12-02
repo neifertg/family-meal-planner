@@ -13,8 +13,25 @@ type GroceryItem = {
   recipe_id: string | null
 }
 
+type InventoryItem = {
+  id: string
+  name: string
+  category: string
+  quantity_level: 'low' | 'medium' | 'full'
+  expiration_date: string | null
+}
+
+type GroceryItemWithInventory = GroceryItem & {
+  inventoryStatus?: {
+    inStock: boolean
+    quantityLevel: 'low' | 'medium' | 'full'
+    expirationDate: string | null
+  }
+}
+
 export default function ShoppingListPage() {
   const [items, setItems] = useState<GroceryItem[]>([])
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [newItem, setNewItem] = useState('')
   const [newQuantity, setNewQuantity] = useState('')
@@ -29,6 +46,7 @@ export default function ShoppingListPage() {
   useEffect(() => {
     if (familyId) {
       loadShoppingList()
+      loadInventory()
     }
   }, [familyId])
 
@@ -70,6 +88,21 @@ export default function ShoppingListPage() {
 
     if (data) setItems(data)
     setLoading(false)
+  }
+
+  const loadInventory = async () => {
+    if (!familyId) return
+
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('*')
+      .eq('family_id', familyId)
+
+    if (error) {
+      console.error('Error loading inventory:', error)
+    } else if (data) {
+      setInventoryItems(data)
+    }
   }
 
   const generateFromMealPlan = async () => {
@@ -268,8 +301,35 @@ export default function ShoppingListPage() {
     if (!error) loadShoppingList()
   }
 
-  const groupedItems = groupByCategory(items)
+  // Check if an item is in inventory
+  const checkInventoryStatus = (itemName: string) => {
+    const normalizedName = extractCoreIngredient(itemName)
+
+    for (const invItem of inventoryItems) {
+      const invNormalizedName = extractCoreIngredient(invItem.name)
+      const similarity = stringSimilarity(normalizedName, invNormalizedName)
+
+      if (similarity >= 0.75) {
+        return {
+          inStock: true,
+          quantityLevel: invItem.quantity_level,
+          expirationDate: invItem.expiration_date
+        }
+      }
+    }
+
+    return null
+  }
+
+  // Enhance items with inventory status
+  const itemsWithInventory: GroceryItemWithInventory[] = items.map(item => ({
+    ...item,
+    inventoryStatus: checkInventoryStatus(item.name) || undefined
+  }))
+
+  const groupedItems = groupByCategory(itemsWithInventory)
   const completedCount = items.filter(i => i.is_checked).length
+  const inStockCount = itemsWithInventory.filter(i => i.inventoryStatus?.inStock).length
 
   return (
     <div className="space-y-6">
@@ -280,9 +340,19 @@ export default function ShoppingListPage() {
             <h1 className="text-3xl md:text-4xl font-bold mb-2">Shopping List</h1>
             <p className="text-emerald-100">
               {completedCount} of {items.length} items checked off
+              {inStockCount > 0 && ` • ${inStockCount} already in inventory`}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link
+              href="/dashboard/inventory"
+              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 inline-flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              View Inventory
+            </Link>
             <Link
               href="/dashboard/calendar"
               className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 inline-flex items-center gap-2"
@@ -384,8 +454,21 @@ export default function ShoppingListPage() {
                         )}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <div className={`text-sm font-medium ${item.is_checked ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                          {item.name}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className={`text-sm font-medium ${item.is_checked ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                            {item.name}
+                          </div>
+                          {item.inventoryStatus?.inStock && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              item.inventoryStatus.quantityLevel === 'full'
+                                ? 'bg-green-100 text-green-700 border border-green-200'
+                                : item.inventoryStatus.quantityLevel === 'medium'
+                                ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                : 'bg-orange-100 text-orange-700 border border-orange-200'
+                            }`}>
+                              ✓ In Stock{item.inventoryStatus.quantityLevel === 'low' ? ' (Low)' : ''}
+                            </span>
+                          )}
                         </div>
                         {item.quantity && (
                           <div className="text-xs text-gray-500 mt-0.5">{item.quantity}</div>
@@ -731,13 +814,13 @@ function categorizeIngredient(ingredient: string): string {
   return 'other'
 }
 
-function groupByCategory(items: GroceryItem[]): Record<string, GroceryItem[]> {
+function groupByCategory(items: GroceryItemWithInventory[]): Record<string, GroceryItemWithInventory[]> {
   return items.reduce((acc, item) => {
     const category = item.category || 'other'
     if (!acc[category]) acc[category] = []
     acc[category].push(item)
     return acc
-  }, {} as Record<string, GroceryItem[]>)
+  }, {} as Record<string, GroceryItemWithInventory[]>)
 }
 
 function getCategoryIcon(category: string) {
