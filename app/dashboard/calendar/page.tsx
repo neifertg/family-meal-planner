@@ -10,6 +10,13 @@ type Recipe = {
   image_url: string | null
   prep_time_minutes: number | null
   cook_time_minutes: number | null
+  ingredients?: any
+}
+
+type RecipeWithScore = Recipe & {
+  inventoryScore?: number
+  matchedIngredients?: string[]
+  expiringIngredients?: string[]
 }
 
 type MealPlan = {
@@ -28,13 +35,23 @@ type DayMeals = {
   dinner: MealPlan | null
 }
 
+type InventoryItem = {
+  id: string
+  name: string
+  category: string
+  quantity_level: 'low' | 'medium' | 'full'
+  expiration_date: string | null
+}
+
 export default function CalendarPage() {
   const [weekStart, setWeekStart] = useState<Date>(getMonday(new Date()))
   const [weekDays, setWeekDays] = useState<DayMeals[]>([])
   const [recipes, setRecipes] = useState<Recipe[]>([])
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSlot, setSelectedSlot] = useState<{ date: string; mealType: string } | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -45,6 +62,7 @@ export default function CalendarPage() {
     if (familyId) {
       loadWeekData()
       loadRecipes()
+      loadInventory()
     }
   }, [weekStart, familyId])
 
@@ -116,10 +134,25 @@ export default function CalendarPage() {
   const loadRecipes = async () => {
     const { data } = await supabase
       .from('recipes')
-      .select('id, name, image_url, prep_time_minutes, cook_time_minutes')
+      .select('id, name, image_url, prep_time_minutes, cook_time_minutes, ingredients')
       .order('name')
 
     if (data) setRecipes(data)
+  }
+
+  const loadInventory = async () => {
+    if (!familyId) return
+
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('*')
+      .eq('family_id', familyId)
+
+    if (error) {
+      console.error('Error loading inventory:', error)
+    } else if (data) {
+      setInventoryItems(data)
+    }
   }
 
   const assignRecipe = async (recipeId: string, date: string, mealType: string) => {
@@ -185,6 +218,75 @@ export default function CalendarPage() {
   const goToToday = () => {
     setWeekStart(getMonday(new Date()))
   }
+
+  // Score recipes based on inventory
+  const scoreRecipeByInventory = (recipe: Recipe): RecipeWithScore => {
+    if (!recipe.ingredients || inventoryItems.length === 0) {
+      return { ...recipe, inventoryScore: 0, matchedIngredients: [], expiringIngredients: [] }
+    }
+
+    const ingredients = Array.isArray(recipe.ingredients)
+      ? recipe.ingredients
+      : recipe.ingredients.ingredients || []
+
+    const matched: string[] = []
+    const expiring: string[] = []
+    let score = 0
+
+    ingredients.forEach((ingredient: string) => {
+      const coreIngredient = extractCoreIngredient(ingredient)
+
+      for (const invItem of inventoryItems) {
+        const invCore = extractCoreIngredient(invItem.name)
+        const similarity = stringSimilarity(coreIngredient, invCore)
+
+        if (similarity >= 0.75) {
+          matched.push(invItem.name)
+
+          // Higher score for expiring items (use them up!)
+          if (isExpiringSoon(invItem.expiration_date)) {
+            score += 5
+            expiring.push(invItem.name)
+          } else {
+            score += 2
+          }
+
+          // Bonus for items that are full (plentiful)
+          if (invItem.quantity_level === 'full') {
+            score += 1
+          }
+
+          break
+        }
+      }
+    })
+
+    // Bonus for recipes that use many inventory items
+    const matchPercentage = ingredients.length > 0 ? matched.length / ingredients.length : 0
+    score += matchPercentage * 10
+
+    return {
+      ...recipe,
+      inventoryScore: score,
+      matchedIngredients: matched,
+      expiringIngredients: expiring
+    }
+  }
+
+  const isExpiringSoon = (expirationDate: string | null) => {
+    if (!expirationDate) return false
+    const today = new Date()
+    const expiration = new Date(expirationDate)
+    const diffDays = Math.ceil((expiration.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    return diffDays <= 7 && diffDays >= 0
+  }
+
+  // Get smart recipe suggestions
+  const suggestedRecipes = recipes
+    .map(r => scoreRecipeByInventory(r))
+    .filter(r => (r.inventoryScore || 0) > 0)
+    .sort((a, b) => (b.inventoryScore || 0) - (a.inventoryScore || 0))
+    .slice(0, 5)
 
   return (
     <div className="space-y-6">
@@ -291,6 +393,7 @@ export default function CalendarPage() {
       {selectedSlot && (
         <RecipeSelectionModal
           recipes={recipes}
+          suggestedRecipes={suggestedRecipes}
           onSelect={(recipeId) => assignRecipe(recipeId, selectedSlot.date, selectedSlot.mealType)}
           onClose={() => setSelectedSlot(null)}
           mealType={selectedSlot.mealType}
@@ -379,16 +482,19 @@ function MealSlot({
 
 function RecipeSelectionModal({
   recipes,
+  suggestedRecipes,
   onSelect,
   onClose,
   mealType
 }: {
   recipes: Recipe[]
+  suggestedRecipes: RecipeWithScore[]
   onSelect: (recipeId: string) => void
   onClose: () => void
   mealType: string
 }) {
   const [search, setSearch] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(true)
 
   const filteredRecipes = recipes.filter(r =>
     r.name.toLowerCase().includes(search.toLowerCase())
@@ -429,6 +535,70 @@ function RecipeSelectionModal({
 
         {/* Recipe List */}
         <div className="flex-1 overflow-y-auto p-6">
+          {/* Smart Suggestions */}
+          {suggestedRecipes.length > 0 && !search && showSuggestions && (
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  <h3 className="text-lg font-semibold text-gray-900">Smart Suggestions</h3>
+                  <span className="text-sm text-gray-500">(Based on your inventory)</span>
+                </div>
+                <button
+                  onClick={() => setShowSuggestions(false)}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Hide
+                </button>
+              </div>
+              <div className="grid gap-2">
+                {suggestedRecipes.map((recipe) => (
+                  <button
+                    key={recipe.id}
+                    onClick={() => onSelect(recipe.id)}
+                    className="flex items-center gap-4 p-3 bg-gradient-to-r from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 rounded-lg transition-all text-left group border-2 border-emerald-200"
+                  >
+                    {recipe.image_url ? (
+                      <img
+                        src={recipe.image_url}
+                        alt={recipe.name}
+                        className="w-14 h-14 object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 bg-emerald-200 rounded-lg flex items-center justify-center">
+                        <svg className="w-7 h-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900">
+                        {recipe.name}
+                      </div>
+                      <div className="text-xs text-emerald-700 mt-1 flex flex-wrap gap-2">
+                        {recipe.expiringIngredients && recipe.expiringIngredients.length > 0 && (
+                          <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">
+                            ⏰ Uses expiring items
+                          </span>
+                        )}
+                        {recipe.matchedIngredients && recipe.matchedIngredients.length > 0 && (
+                          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                            ✓ {recipe.matchedIngredients.length} items in stock
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">All Recipes</h3>
+              </div>
+            </div>
+          )}
+
           {filteredRecipes.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <p>No recipes found</p>
@@ -504,4 +674,55 @@ function formatWeekRange(weekStart: Date): string {
   } else {
     return `${startMonth} ${weekStart.getDate()} - ${endMonth} ${weekEnd.getDate()}, ${weekStart.getFullYear()}`
   }
+}
+
+// Helper functions for ingredient matching (copied from shopping page)
+function extractCoreIngredient(name: string): string {
+  let core = name.toLowerCase().trim()
+  core = core.replace(/\([^)]*\)/g, '').trim()
+  core = core.replace(/\[[^\]]*\]/g, '').trim()
+  core = core.replace(/\b(about|approximately|roughly|around)\b/gi, '').trim()
+
+  const allDescriptors = [
+    'fresh', 'frozen', 'canned', 'dried', 'chopped', 'diced', 'sliced',
+    'minced', 'crushed', 'ground', 'shredded', 'grated', 'crumbled',
+    'peeled', 'deveined', 'trimmed', 'cut', 'halved', 'quartered',
+    'raw', 'cooked', 'pre-cooked', 'uncooked', 'blanched', 'roasted',
+    'grilled', 'baked', 'fried', 'sauteed', 'steamed', 'boiled',
+    'rotisserie', 'smoked', 'cured', 'marinated',
+    'organic', 'natural', 'fresh', 'premium', 'artisan', 'local',
+    'low-fat', 'reduced-fat', 'fat-free', 'nonfat', 'whole', 'skim',
+    'low-sodium', 'reduced-sodium', 'sodium-free', 'no-salt', 'unsalted', 'salted',
+    'extra-virgin', 'virgin', 'pure', 'refined', 'unrefined',
+    'large', 'medium', 'small', 'extra-large', 'jumbo', 'baby', 'mini',
+    'boneless', 'bone-in', 'skinless', 'skin-on'
+  ]
+
+  allDescriptors.forEach(descriptor => {
+    const regex = new RegExp(`\\b${descriptor}\\b`, 'gi')
+    core = core.replace(regex, '').trim()
+  })
+
+  core = core.replace(/\s+/g, ' ').trim()
+  core = core.replace(/^(a|an|the)\s+/gi, '').trim()
+
+  return core || name
+}
+
+function stringSimilarity(str1: string, str2: string): number {
+  const s1 = str1.toLowerCase()
+  const s2 = str2.toLowerCase()
+
+  if (s1 === s2) return 1.0
+  if (s1.includes(s2) || s2.includes(s1)) return 0.85
+
+  const longer = s1.length > s2.length ? s1 : s2
+  const shorter = s1.length > s2.length ? s2 : s1
+
+  let matches = 0
+  for (let i = 0; i < shorter.length; i++) {
+    if (longer.includes(shorter[i])) matches++
+  }
+
+  return matches / longer.length
 }
