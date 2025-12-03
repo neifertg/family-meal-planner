@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import RecipeRating from '@/components/RecipeRating'
 
 type Recipe = {
   id: string
@@ -25,6 +26,7 @@ type MealPlan = {
   planned_date: string
   meal_type: string
   is_completed: boolean
+  guest_count: number
   recipes: Recipe
 }
 
@@ -52,6 +54,9 @@ export default function CalendarPage() {
   const [selectedSlot, setSelectedSlot] = useState<{ date: string; mealType: string } | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [familyMemberCount, setFamilyMemberCount] = useState<number>(0)
+  const [guestCount, setGuestCount] = useState<number>(0)
+  const [selectedMealForRating, setSelectedMealForRating] = useState<MealPlan | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -75,6 +80,16 @@ export default function CalendarPage() {
 
     if (families) {
       setFamilyId(families.id)
+
+      // Load family member count
+      const { data: members } = await supabase
+        .from('family_members')
+        .select('id')
+        .eq('family_id', families.id)
+
+      if (members) {
+        setFamilyMemberCount(members.length)
+      }
     }
   }
 
@@ -167,7 +182,8 @@ export default function CalendarPage() {
         family_id: familyId,
         recipe_id: recipeId,
         planned_date: date,
-        meal_type: mealType
+        meal_type: mealType,
+        guest_count: guestCount
       }, {
         onConflict: 'family_id,planned_date,meal_type'
       })
@@ -380,6 +396,7 @@ export default function CalendarPage() {
                       onAdd={() => setSelectedSlot({ date: day.date, mealType })}
                       onRemove={removeMeal}
                       onToggleComplete={toggleCompleted}
+                      onViewDetails={setSelectedMealForRating}
                     />
                   ))}
                 </div>
@@ -397,6 +414,17 @@ export default function CalendarPage() {
           onSelect={(recipeId) => assignRecipe(recipeId, selectedSlot.date, selectedSlot.mealType)}
           onClose={() => setSelectedSlot(null)}
           mealType={selectedSlot.mealType}
+          familyMemberCount={familyMemberCount}
+          guestCount={guestCount}
+          setGuestCount={setGuestCount}
+        />
+      )}
+
+      {/* Recipe Details & Rating Modal */}
+      {selectedMealForRating && (
+        <RecipeDetailsModal
+          meal={selectedMealForRating}
+          onClose={() => setSelectedMealForRating(null)}
         />
       )}
     </div>
@@ -408,13 +436,15 @@ function MealSlot({
   meal,
   onAdd,
   onRemove,
-  onToggleComplete
+  onToggleComplete,
+  onViewDetails
 }: {
   mealType: string
   meal: MealPlan | null
   onAdd: () => void
   onRemove: (id: string) => void
   onToggleComplete: (id: string, status: boolean) => void
+  onViewDetails?: (meal: MealPlan) => void
 }) {
   const mealIcons = {
     breakfast: '🌅',
@@ -445,9 +475,20 @@ function MealSlot({
             <span>{mealIcons[mealType as keyof typeof mealIcons]}</span>
             {mealType}
           </div>
-          <div className="text-sm font-semibold text-gray-900 line-clamp-2">
+          <button
+            onClick={() => onViewDetails?.(meal)}
+            className="text-sm font-semibold text-gray-900 line-clamp-2 hover:text-indigo-600 transition-colors text-left"
+          >
             {meal.recipes.name}
-          </div>
+          </button>
+          {meal.guest_count > 0 && (
+            <div className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              +{meal.guest_count} guest{meal.guest_count !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-1">
           <button
@@ -485,13 +526,19 @@ function RecipeSelectionModal({
   suggestedRecipes,
   onSelect,
   onClose,
-  mealType
+  mealType,
+  familyMemberCount,
+  guestCount,
+  setGuestCount
 }: {
   recipes: Recipe[]
   suggestedRecipes: RecipeWithScore[]
   onSelect: (recipeId: string) => void
   onClose: () => void
   mealType: string
+  familyMemberCount: number
+  guestCount: number
+  setGuestCount: (count: number) => void
 }) {
   const [search, setSearch] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(true)
@@ -530,6 +577,47 @@ function RecipeSelectionModal({
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               autoFocus
             />
+          </div>
+
+          {/* Guest Count */}
+          <div className="mt-4 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-indigo-100 rounded-full p-2">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-900">
+                    Total People: {familyMemberCount + guestCount}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {familyMemberCount} family member{familyMemberCount !== 1 ? 's' : ''} + {guestCount} guest{guestCount !== 1 ? 's' : ''}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setGuestCount(Math.max(0, guestCount - 1))}
+                  className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  disabled={guestCount === 0}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                  </svg>
+                </button>
+                <span className="w-12 text-center font-semibold text-gray-900">{guestCount}</span>
+                <button
+                  onClick={() => setGuestCount(guestCount + 1)}
+                  className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -649,6 +737,92 @@ function RecipeSelectionModal({
               ))}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function RecipeDetailsModal({
+  meal,
+  onClose
+}: {
+  meal: MealPlan
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">{meal.recipes.name}</h2>
+            {meal.guest_count > 0 && (
+              <p className="text-sm text-indigo-600 mt-1">
+                Serving {meal.guest_count} guest{meal.guest_count !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {/* Recipe Image */}
+          {meal.recipes.image_url && (
+            <div className="mb-6 rounded-lg overflow-hidden">
+              <img
+                src={meal.recipes.image_url}
+                alt={meal.recipes.name}
+                className="w-full h-64 object-cover"
+              />
+            </div>
+          )}
+
+          {/* Recipe Info */}
+          {(meal.recipes.prep_time_minutes || meal.recipes.cook_time_minutes) && (
+            <div className="flex gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+              {meal.recipes.prep_time_minutes && (
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm text-gray-700">
+                    <span className="font-semibold">{meal.recipes.prep_time_minutes}m</span> prep
+                  </span>
+                </div>
+              )}
+              {meal.recipes.cook_time_minutes && (
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                  </svg>
+                  <span className="text-sm text-gray-700">
+                    <span className="font-semibold">{meal.recipes.cook_time_minutes}m</span> cook
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Ratings Section */}
+          <div className="border-t border-gray-200 pt-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Family Ratings</h3>
+            <RecipeRating
+              recipeId={meal.recipe_id}
+              recipeName={meal.recipes.name}
+            />
+          </div>
         </div>
       </div>
     </div>
