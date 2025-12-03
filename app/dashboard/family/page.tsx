@@ -48,16 +48,29 @@ export default function FamilyPage() {
     setIsLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) return
+    if (!user) {
+      setIsLoading(false)
+      return
+    }
 
     // Get user's family_id
-    const { data: userData } = await supabase
+    const { data: userData, error: userError } = await supabase
       .from('users')
       .select('family_id')
       .eq('id', user.id)
       .single()
 
-    if (!userData?.family_id) return
+    if (userError) {
+      console.error('Error loading user data:', userError)
+      setIsLoading(false)
+      return
+    }
+
+    if (!userData?.family_id) {
+      console.error('No family_id found for user')
+      setIsLoading(false)
+      return
+    }
 
     const { data, error } = await supabase
       .from('family_members')
@@ -65,7 +78,9 @@ export default function FamilyPage() {
       .eq('family_id', userData.family_id)
       .order('created_at', { ascending: true })
 
-    if (!error && data) {
+    if (error) {
+      console.error('Error loading family members:', error)
+    } else if (data) {
       setFamilyMembers(data)
     }
     setIsLoading(false)
