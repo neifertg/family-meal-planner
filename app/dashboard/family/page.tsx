@@ -46,28 +46,21 @@ export default function FamilyPage() {
 
   const loadFamilyMembers = async () => {
     setIsLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
-      setIsLoading(false)
-      return
-    }
-
-    // Get user's family_id
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('family_id')
-      .eq('id', user.id)
+    // Get the family (RLS ensures we only get the user's family)
+    const { data: family, error: familyError } = await supabase
+      .from('families')
+      .select('id')
       .single()
 
-    if (userError) {
-      console.error('Error loading user data:', userError)
+    if (familyError) {
+      console.error('Error loading family:', familyError)
       setIsLoading(false)
       return
     }
 
-    if (!userData?.family_id) {
-      console.error('No family_id found for user')
+    if (!family?.id) {
+      console.error('No family found')
       setIsLoading(false)
       return
     }
@@ -75,7 +68,7 @@ export default function FamilyPage() {
     const { data, error } = await supabase
       .from('family_members')
       .select('*')
-      .eq('family_id', userData.family_id)
+      .eq('family_id', family.id)
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -148,19 +141,26 @@ export default function FamilyPage() {
   }
 
   const handleSave = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { data: userData } = await supabase
-      .from('users')
-      .select('family_id')
-      .eq('id', user.id)
+    // Get the family (RLS ensures we only get the user's family)
+    const { data: family, error: familyError } = await supabase
+      .from('families')
+      .select('id')
       .single()
 
-    if (!userData?.family_id) return
+    if (familyError) {
+      console.error('Error loading family:', familyError)
+      alert(`Error loading family: ${familyError.message}`)
+      return
+    }
+
+    if (!family?.id) {
+      console.error('No family found')
+      alert('No family found. Please contact support.')
+      return
+    }
 
     const memberData = {
-      family_id: userData.family_id,
+      family_id: family.id,
       name: formData.name,
       age: formData.age ? parseInt(formData.age) : null,
       photo_url: formData.photo_url || null,
@@ -169,13 +169,18 @@ export default function FamilyPage() {
       favorite_cuisines: formData.favorite_cuisines.length > 0 ? formData.favorite_cuisines : null
     }
 
+    console.log('Saving member data:', memberData)
+
     if (editingMember) {
       const { error } = await supabase
         .from('family_members')
         .update(memberData)
         .eq('id', editingMember.id)
 
-      if (!error) {
+      if (error) {
+        console.error('Error updating family member:', error)
+        alert(`Failed to update family member: ${error.message}`)
+      } else {
         setShowModal(false)
         resetForm()
         loadFamilyMembers()
@@ -185,7 +190,10 @@ export default function FamilyPage() {
         .from('family_members')
         .insert(memberData)
 
-      if (!error) {
+      if (error) {
+        console.error('Error adding family member:', error)
+        alert(`Failed to add family member: ${error.message}`)
+      } else {
         setShowModal(false)
         resetForm()
         loadFamilyMembers()
