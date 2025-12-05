@@ -39,23 +39,29 @@ export default function RecipeRating({ recipeId, recipeName }: RecipeRatingProps
   const loadData = async () => {
     setLoading(true)
 
-    // Get user's family_id
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { data: userData } = await supabase
-      .from('users')
-      .select('family_id')
-      .eq('id', user.id)
+    // Get the family (RLS ensures we only get the user's family)
+    const { data: family, error: familyError } = await supabase
+      .from('families')
+      .select('id')
       .single()
 
-    if (!userData?.family_id) return
+    if (familyError) {
+      console.error('Error loading family:', familyError)
+      setLoading(false)
+      return
+    }
+
+    if (!family?.id) {
+      console.error('No family found')
+      setLoading(false)
+      return
+    }
 
     // Load family members
     const { data: membersData } = await supabase
       .from('family_members')
       .select('id, name, photo_url')
-      .eq('family_id', userData.family_id)
+      .eq('family_id', family.id)
 
     if (membersData) {
       setFamilyMembers(membersData)
