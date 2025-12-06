@@ -93,6 +93,79 @@ function cleanContent(html: string): string {
 }
 
 /**
+ * Extract recipe from image using Claude Vision
+ */
+export async function extractRecipeFromImage(
+  imageData: string,
+  mimeType: string = 'image/jpeg'
+): Promise<ExtractionResult> {
+  try {
+    const client = getClaudeClient()
+
+    // Call Claude with vision
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022', // Vision requires Sonnet or Opus
+      max_tokens: 4096,
+      temperature: 0.1,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mimeType,
+                data: imageData,
+              },
+            },
+            {
+              type: 'text',
+              text: `${EXTRACTION_PROMPT}\n\nExtract the recipe from this image. If the recipe is handwritten, do your best to read it accurately. Return the recipe as JSON:`
+            }
+          ],
+        }
+      ]
+    })
+
+    // Extract JSON from response
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    let recipe: ExtractedRecipe
+
+    try {
+      const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) ||
+                       responseText.match(/```\s*([\s\S]*?)\s*```/)
+      const jsonText = jsonMatch ? jsonMatch[1] : responseText
+      recipe = JSON.parse(jsonText)
+    } catch (parseError) {
+      console.error('Failed to parse Claude Vision response:', responseText)
+      throw new Error('Invalid JSON response from Claude Vision')
+    }
+
+    const confidence = calculateConfidence(recipe)
+    const inputTokens = message.usage.input_tokens
+    const outputTokens = message.usage.output_tokens
+    const totalTokens = inputTokens + outputTokens
+
+    return {
+      success: true,
+      recipe,
+      confidence,
+      extraction_method: 'claude',
+      tokens_used: totalTokens,
+    }
+
+  } catch (error: any) {
+    console.error('Claude Vision extraction error:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to extract recipe from image with Claude Vision',
+      extraction_method: 'claude',
+    }
+  }
+}
+
+/**
  * Extract recipe using Claude with structured JSON output
  */
 export async function extractRecipeWithClaude(
@@ -114,7 +187,13 @@ export async function extractRecipeWithClaude(
     } else if (source.type === 'text') {
       contentText = source.content
     } else if (source.type === 'image') {
-      throw new Error('Image extraction with Claude Vision - coming soon')
+      // Extract base64 data and mime type
+      const base64Match = source.content.match(/^data:([^;]+);base64,(.+)$/)
+      if (!base64Match) {
+        throw new Error('Invalid image data format. Expected base64 data URL.')
+      }
+      const [, mimeType, imageData] = base64Match
+      return await extractRecipeFromImage(imageData, mimeType)
     } else {
       throw new Error(`Unsupported source type: ${source.type}`)
     }

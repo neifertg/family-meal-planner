@@ -220,12 +220,15 @@ export default function NewRecipePage() {
           </div>
 
           {showOCR && (
-            <RecipePhotoOCR onTextExtracted={handleTextExtracted} />
+            <RecipePhotoOCR
+              onTextExtracted={handleTextExtracted}
+              onRecipeExtracted={handleRecipeScraped}
+            />
           )}
 
           {!showOCR && (
             <p className="text-sm text-gray-600">
-              Have a recipe photo? Click "Show" to upload an image and we'll automatically extract the recipe text using OCR.
+              Have a recipe photo? Click "Show" to upload an image and we'll automatically extract the recipe using AI-powered vision.
             </p>
           )}
         </div>
