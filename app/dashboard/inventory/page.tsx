@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import ReceiptScanner from '@/components/ReceiptScanner'
+import { ExtractedReceipt } from '@/lib/receiptScanner/types'
+import { estimateExpirationDate } from '@/lib/expirationEstimator'
 
 type InventoryItem = {
   id: string
@@ -22,6 +25,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
 
   // Form state
@@ -160,6 +164,74 @@ export default function InventoryPage() {
     if (!error) loadInventory()
   }
 
+  // Handle receipt processing
+  const handleReceiptProcessed = async (receipt: ExtractedReceipt) => {
+    if (!familyId) return
+
+    try {
+      // Process each receipt item
+      for (const receiptItem of receipt.items) {
+        // Check if item already exists in inventory
+        const existingItem = items.find(item =>
+          item.name.toLowerCase() === receiptItem.name.toLowerCase()
+        )
+
+        // Estimate expiration date
+        const expirationDate = await estimateExpirationDate(
+          receiptItem.name,
+          receipt.purchase_date
+        )
+
+        if (existingItem) {
+          // Update existing item
+          await supabase
+            .from('inventory_items')
+            .update({
+              quantity_level: 'full',
+              purchase_date: receipt.purchase_date,
+              expiration_date: expirationDate
+            })
+            .eq('id', existingItem.id)
+        } else {
+          // Add new item
+          await supabase
+            .from('inventory_items')
+            .insert({
+              family_id: familyId,
+              name: receiptItem.name,
+              category: receiptItem.category || 'pantry',
+              quantity_level: 'full',
+              purchase_date: receipt.purchase_date,
+              expiration_date: expirationDate
+            })
+        }
+
+        // Record price if available
+        if (receiptItem.price && receiptItem.price > 0) {
+          await supabase
+            .from('ingredient_prices')
+            .insert({
+              family_id: familyId,
+              ingredient_name: receiptItem.name,
+              price_usd: receiptItem.price,
+              quantity: receiptItem.quantity,
+              store_name: receipt.store_name,
+              purchase_date: receipt.purchase_date
+            })
+        }
+      }
+
+      // Reload inventory
+      await loadInventory()
+
+      alert(`✅ Receipt processed! Updated ${receipt.items.length} items in inventory.`)
+      setShowReceiptScanner(false)
+    } catch (error) {
+      console.error('Error processing receipt:', error)
+      alert('Failed to process receipt. Please try again.')
+    }
+  }
+
   const closeModal = () => {
     setShowAddModal(false)
     setEditingItem(null)
@@ -266,15 +338,26 @@ export default function InventoryPage() {
               Track your ingredients and reduce food waste
             </p>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-white hover:bg-purple-50 text-purple-700 font-semibold py-2.5 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Item
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowReceiptScanner(true)}
+              className="bg-white hover:bg-purple-50 text-purple-700 font-semibold py-2.5 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Scan Receipt
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-white hover:bg-purple-50 text-purple-700 font-semibold py-2.5 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Item
+            </button>
+          </div>
         </div>
       </div>
 
@@ -534,6 +617,28 @@ export default function InventoryPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Receipt Scanner Modal */}
+      {showReceiptScanner && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <h2 className="text-2xl font-bold text-gray-900">Scan Receipt</h2>
+              <button
+                onClick={() => setShowReceiptScanner(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <ReceiptScanner onReceiptProcessed={handleReceiptProcessed} />
+            </div>
           </div>
         </div>
       )}
