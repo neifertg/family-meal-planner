@@ -1,0 +1,186 @@
+/**
+ * Claude Vision Receipt Scanner
+ *
+ * Uses Anthropic's Claude with vision to extract receipt data
+ */
+
+import Anthropic from '@anthropic-ai/sdk'
+import { ExtractedReceipt, ReceiptExtractionResult, ReceiptItem } from './types'
+
+const EXTRACTION_PROMPT = `You are a receipt extraction expert. Extract all information from this grocery receipt image and return it as valid JSON.
+
+Extract the following information:
+- store_name (string): Name of the store
+- store_location (string): Store address or location if visible
+- purchase_date (string): Date of purchase in YYYY-MM-DD format
+- items (array of objects): Each item with:
+  - name (string): Item name/description
+  - quantity (string): Quantity purchased (e.g., "2 lb", "1 dozen", "3 cans")
+  - price (number): Item price in dollars
+  - unit_price (number): Price per unit if calculable
+- subtotal (number): Subtotal before tax
+- tax (number): Tax amount
+- total (number): Total amount paid
+- payment_method (string): Payment method if visible (e.g., "VISA", "CASH")
+- receipt_number (string): Receipt or transaction number if visible
+
+IMPORTANT INSTRUCTIONS:
+1. Parse each line item carefully - extract item name, quantity, and price
+2. Convert all prices to numbers (remove $ signs)
+3. Identify quantities from item descriptions (e.g., "2 LB CHICKEN" → quantity: "2 lb")
+4. Group items logically - don't split single items across multiple entries
+5. Skip non-grocery items like bags, discounts, or promotional text
+6. Handle multi-line item descriptions correctly
+7. Return ONLY valid JSON - no markdown, no explanations
+
+If a field is not found in the receipt, omit it from the JSON (don't use null).`
+
+/**
+ * Initialize Claude client
+ */
+function getClaudeClient(): Anthropic {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY environment variable not set')
+  }
+  return new Anthropic({ apiKey })
+}
+
+/**
+ * Categorize grocery items
+ */
+function categorizeItem(itemName: string): string {
+  const lower = itemName.toLowerCase()
+
+  if (/(apple|banana|orange|lettuce|tomato|carrot|onion|garlic|pepper|fruit|vegetable|spinach|kale|broccoli|cauliflower|potato|celery|cucumber|zucchini|mushroom)/i.test(lower)) {
+    return 'produce'
+  }
+  if (/(milk|cheese|yogurt|butter|cream|dairy|egg)/i.test(lower)) {
+    return 'dairy'
+  }
+  if (/(chicken|beef|pork|fish|salmon|meat|turkey|lamb|shrimp|bacon|sausage)/i.test(lower)) {
+    return 'meat'
+  }
+  if (/(frozen|ice cream)/i.test(lower)) {
+    return 'frozen'
+  }
+  if (/(flour|sugar|rice|pasta|oil|spice|salt|pepper|bread|broth|stock|sauce|vinegar|soy sauce|honey|syrup)/i.test(lower)) {
+    return 'pantry'
+  }
+
+  return 'other'
+}
+
+/**
+ * Extract receipt from image using Claude Vision
+ */
+export async function extractReceiptFromImage(
+  imageData: string,
+  mimeType: string = 'image/jpeg'
+): Promise<ReceiptExtractionResult> {
+  try {
+    const client = getClaudeClient()
+
+    // Call Claude with vision
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514', // Claude Sonnet 4 with vision support
+      max_tokens: 4096,
+      temperature: 0.1,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mimeType,
+                data: imageData,
+              },
+            },
+            {
+              type: 'text',
+              text: `${EXTRACTION_PROMPT}\n\nExtract the receipt data from this image. Return the data as JSON:`
+            }
+          ],
+        }
+      ]
+    })
+
+    // Extract JSON from response
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    let receipt: ExtractedReceipt
+
+    try {
+      const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) ||
+                       responseText.match(/```\s*([\s\S]*?)\s*```/)
+      const jsonText = jsonMatch ? jsonMatch[1] : responseText
+      receipt = JSON.parse(jsonText)
+    } catch (parseError) {
+      console.error('Failed to parse Claude Vision response:', responseText)
+      throw new Error('Invalid JSON response from Claude Vision')
+    }
+
+    // Auto-categorize items
+    if (receipt.items) {
+      receipt.items = receipt.items.map(item => ({
+        ...item,
+        category: item.category || categorizeItem(item.name)
+      }))
+    }
+
+    const confidence = calculateConfidence(receipt)
+    const inputTokens = message.usage.input_tokens
+    const outputTokens = message.usage.output_tokens
+    const totalTokens = inputTokens + outputTokens
+
+    // Estimate cost (Claude Sonnet 4 pricing: ~$3/million input tokens, ~$15/million output tokens)
+    const costUsd = (inputTokens * 3 / 1_000_000) + (outputTokens * 15 / 1_000_000)
+
+    return {
+      success: true,
+      receipt,
+      confidence,
+      tokens_used: totalTokens,
+      cost_usd: costUsd
+    }
+
+  } catch (error: any) {
+    console.error('Claude Vision extraction error:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to extract receipt from image',
+    }
+  }
+}
+
+/**
+ * Calculate confidence score based on receipt completeness
+ */
+function calculateConfidence(receipt: ExtractedReceipt): number {
+  let score = 0
+  const weights = {
+    store: 10,
+    date: 20,
+    items: 40,
+    total: 20,
+    details: 10
+  }
+
+  if (receipt.store_name) score += weights.store
+  if (receipt.purchase_date) score += weights.date
+  if (receipt.items && receipt.items.length > 0) {
+    const avgItemCompleteness = receipt.items.reduce((sum, item) => {
+      let itemScore = 0
+      if (item.name) itemScore += 0.4
+      if (item.price) itemScore += 0.4
+      if (item.quantity) itemScore += 0.2
+      return sum + itemScore
+    }, 0) / receipt.items.length
+    score += weights.items * avgItemCompleteness
+  }
+  if (receipt.total) score += weights.total
+  if (receipt.subtotal || receipt.tax) score += weights.details
+
+  return Math.round(score)
+}
