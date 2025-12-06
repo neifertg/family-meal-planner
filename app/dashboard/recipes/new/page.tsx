@@ -153,9 +153,9 @@ export default function NewRecipePage() {
       <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 rounded-2xl p-6 md:p-8 mb-6 text-white shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-1">Create New Recipe</h1>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1">Add Recipe</h1>
             <p className="text-purple-100">
-              Add your own recipe to your collection
+              Import from a URL, upload a photo, or create manually
             </p>
           </div>
           <Link
