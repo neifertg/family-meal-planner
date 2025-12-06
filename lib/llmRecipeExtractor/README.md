@@ -115,6 +115,34 @@ const ocrText = `
 const result = await extractRecipeFromText(ocrText)
 ```
 
+### Extract from Image (Claude Vision) ⭐ NEW
+
+```typescript
+import { extractRecipe } from '@/lib/llmRecipeExtractor'
+
+// Image data as base64 data URL
+const imageData = 'data:image/jpeg;base64,...'
+
+const result = await extractRecipe({
+  type: 'image',
+  content: imageData,
+})
+
+if (result.success) {
+  console.log('Recipe:', result.recipe)
+  console.log('Method:', result.extraction_method) // 'claude'
+  console.log('Confidence:', result.confidence) // 0-100
+  console.log('Tokens:', result.tokens_used)
+}
+```
+
+**Claude Vision Benefits:**
+- Reads handwritten recipe cards
+- Extracts from cookbook pages
+- Understands recipe structure automatically
+- Works with any image format (JPG, PNG, etc.)
+- Handles poorly formatted or complex recipes
+
 ### Force AI Extraction
 
 ```typescript
@@ -128,14 +156,21 @@ The extraction is exposed via `/api/scrape-recipe`:
 
 ```typescript
 // POST /api/scrape-recipe
+
+// From URL
 {
   "url": "https://example.com/recipe",
   "preferLLM": false  // Optional: force AI extraction
 }
 
-// OR extract from text
+// OR from text
 {
   "text": "Recipe content here..."
+}
+
+// OR from image (Claude Vision)
+{
+  "imageData": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
 }
 ```
 
@@ -240,12 +275,13 @@ Test the extractor with these sites:
 
 ## Future Enhancements
 
-- [ ] Claude/Gemini Vision for direct image extraction
+- [x] ~~Claude Vision for direct image extraction~~ ✅ **DONE**
 - [ ] PDF support
 - [ ] Recipe caching/deduplication
 - [ ] Batch processing UI
 - [ ] Cost tracking dashboard
 - [ ] OpenAI GPT-4 as alternative
+- [ ] Gemini Vision as alternative to Claude
 
 ## Architecture
 

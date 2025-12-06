@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { extractRecipeFromURL, extractRecipeFromText } from '@/lib/llmRecipeExtractor'
+import { extractRecipeFromURL, extractRecipeFromText, extractRecipe } from '@/lib/llmRecipeExtractor'
 
 /**
  * POST /api/scrape-recipe
@@ -10,6 +10,7 @@ import { extractRecipeFromURL, extractRecipeFromText } from '@/lib/llmRecipeExtr
  * {
  *   url?: string - The recipe URL to extract from
  *   text?: string - Plain text or OCR text to extract from
+ *   imageData?: string - Base64 image data URL
  *   preferLLM?: boolean - Force LLM extraction even if schema.org available
  * }
  *
@@ -26,12 +27,12 @@ import { extractRecipeFromURL, extractRecipeFromText } from '@/lib/llmRecipeExtr
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { url, text, preferLLM = false } = body
+    const { url, text, imageData, preferLLM = false } = body
 
     // Validate input
-    if (!url && !text) {
+    if (!url && !text && !imageData) {
       return NextResponse.json(
-        { success: false, error: 'Either url or text is required' },
+        { success: false, error: 'Either url, text, or imageData is required' },
         { status: 400 }
       )
     }
@@ -41,6 +42,12 @@ export async function POST(request: NextRequest) {
     if (url) {
       console.log(`API: Extracting recipe from URL: ${url}`)
       result = await extractRecipeFromURL(url, preferLLM)
+    } else if (imageData) {
+      console.log(`API: Extracting recipe from image using Claude Vision`)
+      result = await extractRecipe({
+        type: 'image',
+        content: imageData,
+      })
     } else {
       console.log(`API: Extracting recipe from text input`)
       result = await extractRecipeFromText(text)
