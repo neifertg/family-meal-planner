@@ -104,7 +104,7 @@ export async function extractRecipeFromImage(
 
     // Call Claude with vision
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20240620', // Claude 3.5 Sonnet with vision support (June 2024)
+      model: 'claude-3-opus-20240229', // Claude 3 Opus with vision support
       max_tokens: 4096,
       temperature: 0.1,
       messages: [
