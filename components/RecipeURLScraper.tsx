@@ -19,6 +19,7 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
   const [error, setError] = useState<string | null>(null)
   const [scrapedRecipe, setScrapedRecipe] = useState<ExtractedRecipe | null>(null)
   const [extractionInfo, setExtractionInfo] = useState<ExtractionInfo | null>(null)
+  const [forceAI, setForceAI] = useState(false)
 
   const handleScrape = async () => {
     if (!url.trim()) {
@@ -37,7 +38,10 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({
+          url: url.trim(),
+          preferLLM: forceAI
+        }),
       })
 
       const result = await response.json()
@@ -105,23 +109,47 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="https://www.example.com/recipe"
-              disabled={loading}
-              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow disabled:bg-gray-100"
-            />
-            <button
-              onClick={handleScrape}
-              disabled={loading || !url.trim()}
-              className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:cursor-not-allowed"
-            >
-              {loading ? 'Scraping...' : 'Import'}
-            </button>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="https://www.example.com/recipe"
+                disabled={loading}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow disabled:bg-gray-100"
+              />
+              <button
+                onClick={handleScrape}
+                disabled={loading || !url.trim()}
+                className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:cursor-not-allowed"
+              >
+                {loading ? 'Scraping...' : 'Import'}
+              </button>
+            </div>
+
+            {/* AI Toggle */}
+            <div className="flex items-center justify-between px-1">
+              <label htmlFor="force-ai" className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    id="force-ai"
+                    checked={forceAI}
+                    onChange={(e) => setForceAI(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-purple-600 peer-checked:to-pink-600"></div>
+                </div>
+                <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                  Always use Claude AI
+                </span>
+              </label>
+              <div className="text-xs text-gray-500">
+                {forceAI ? '🤖 AI mode' : '⚡ Auto mode'}
+              </div>
+            </div>
           </div>
         </div>
       </div>
