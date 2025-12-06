@@ -44,15 +44,15 @@ export default function NewRecipePage() {
   }
 
   const handleRecipeScraped = (recipe: ExtractedRecipe) => {
-    // Fill in form fields with extracted data
-    if (recipe.title) setName(recipe.title)
-    if (recipe.description) setDescription(recipe.description)
-    if (recipe.prep_time_minutes) setPrepTime(recipe.prep_time_minutes.toString())
-    if (recipe.cook_time_minutes) setCookTime(recipe.cook_time_minutes.toString())
-    if (recipe.servings) setServings(recipe.servings.toString())
+    // Fill in form fields with extracted data - ensure all values are strings
+    setName(recipe.title || '')
+    setDescription(recipe.description || '')
+    setPrepTime(recipe.prep_time_minutes ? recipe.prep_time_minutes.toString() : '')
+    setCookTime(recipe.cook_time_minutes ? recipe.cook_time_minutes.toString() : '')
+    setServings(recipe.servings ? recipe.servings.toString() : '')
     setCuisine(recipe.cuisine || '')
     setCategory(recipe.category || '')
-    if (recipe.image_url) setImageUrl(recipe.image_url)
+    setImageUrl(recipe.image_url || '')
 
     // Convert structured ingredients to text
     if (recipe.ingredients) {
@@ -111,20 +111,20 @@ export default function NewRecipePage() {
         .map(line => line.trim().replace(/^\d+\.\s*/, '')) // Remove leading numbers
         .filter(line => line.length > 0)
 
-      // Create recipe
+      // Create recipe - ensure all string fields are safely trimmed
       const recipeData = {
         family_id: familyId,
-        name: name.trim(),
-        description: description?.trim() || null,
+        name: (name || '').trim(),
+        description: (description || '').trim() || null,
         prep_time_minutes: prepTime ? parseInt(prepTime) : null,
         cook_time_minutes: cookTime ? parseInt(cookTime) : null,
         total_time_minutes: (prepTime || cookTime)
           ? (parseInt(prepTime || '0') + parseInt(cookTime || '0'))
           : null,
         servings: servings ? parseInt(servings) : null,
-        cuisine: cuisine?.trim() || null,
-        category: category?.trim() || null,
-        image_url: imageUrl?.trim() || null,
+        cuisine: (cuisine || '').trim() || null,
+        category: (category || '').trim() || null,
+        image_url: (imageUrl || '').trim() || null,
         ingredients,
         instructions,
         created_by: user.id,
