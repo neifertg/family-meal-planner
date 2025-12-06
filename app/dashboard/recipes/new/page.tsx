@@ -45,14 +45,14 @@ export default function NewRecipePage() {
 
   const handleRecipeScraped = (recipe: ExtractedRecipe) => {
     // Fill in form fields with extracted data - ensure all values are strings
-    setName(recipe.title || '')
-    setDescription(recipe.description || '')
-    setPrepTime(recipe.prep_time_minutes ? recipe.prep_time_minutes.toString() : '')
-    setCookTime(recipe.cook_time_minutes ? recipe.cook_time_minutes.toString() : '')
-    setServings(recipe.servings ? recipe.servings.toString() : '')
-    setCuisine(recipe.cuisine || '')
-    setCategory(recipe.category || '')
-    setImageUrl(recipe.image_url || '')
+    setName(String(recipe.title || ''))
+    setDescription(String(recipe.description || ''))
+    setPrepTime(recipe.prep_time_minutes ? String(recipe.prep_time_minutes) : '')
+    setCookTime(recipe.cook_time_minutes ? String(recipe.cook_time_minutes) : '')
+    setServings(recipe.servings ? String(recipe.servings) : '')
+    setCuisine(String(recipe.cuisine || ''))
+    setCategory(String(recipe.category || ''))
+    setImageUrl(String(recipe.image_url || ''))
 
     // Convert structured ingredients to text
     if (recipe.ingredients) {
@@ -79,6 +79,23 @@ export default function NewRecipePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // Validate required fields
+    if (!name.trim()) {
+      setError('Recipe name is required')
+      return
+    }
+
+    if (!ingredientsText.trim()) {
+      setError('Please add at least one ingredient')
+      return
+    }
+
+    if (!instructionsText.trim()) {
+      setError('Please add at least one instruction')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -373,7 +390,7 @@ export default function NewRecipePage() {
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
           <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <span className="text-2xl">🥘</span>
-            Ingredients
+            Ingredients <span className="text-red-500">*</span>
           </h2>
           <p className="text-sm text-gray-500 mb-3">Enter one ingredient per line</p>
           <textarea
@@ -389,7 +406,7 @@ export default function NewRecipePage() {
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
           <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <span className="text-2xl">👨‍🍳</span>
-            Instructions
+            Instructions <span className="text-red-500">*</span>
           </h2>
           <p className="text-sm text-gray-500 mb-3">Enter one step per line</p>
           <textarea
