@@ -50,8 +50,8 @@ export default function NewRecipePage() {
     if (recipe.prep_time_minutes) setPrepTime(recipe.prep_time_minutes.toString())
     if (recipe.cook_time_minutes) setCookTime(recipe.cook_time_minutes.toString())
     if (recipe.servings) setServings(recipe.servings.toString())
-    if (recipe.cuisine) setCuisine(recipe.cuisine)
-    if (recipe.category) setCategory(recipe.category)
+    if (recipe.cuisine) setCuisine(recipe.cuisine || '')
+    if (recipe.category) setCategory(recipe.category || '')
     if (recipe.image_url) setImageUrl(recipe.image_url)
 
     // Convert structured ingredients to text
@@ -115,16 +115,16 @@ export default function NewRecipePage() {
       const recipeData = {
         family_id: familyId,
         name: name.trim(),
-        description: description.trim() || null,
+        description: description?.trim() || null,
         prep_time_minutes: prepTime ? parseInt(prepTime) : null,
         cook_time_minutes: cookTime ? parseInt(cookTime) : null,
         total_time_minutes: (prepTime || cookTime)
           ? (parseInt(prepTime || '0') + parseInt(cookTime || '0'))
           : null,
         servings: servings ? parseInt(servings) : null,
-        cuisine: cuisine.trim() || null,
-        category: category.trim() || null,
-        image_url: imageUrl.trim() || null,
+        cuisine: cuisine?.trim() || null,
+        category: category?.trim() || null,
+        image_url: imageUrl?.trim() || null,
         ingredients,
         instructions,
         created_by: user.id,
