@@ -12,6 +12,8 @@ type Recipe = {
   prep_time_minutes: number | null
   cook_time_minutes: number | null
   ingredients?: any
+  estimated_cost_usd: number | null
+  cost_per_serving_usd: number | null
 }
 
 type RecipeWithScore = Recipe & {
@@ -149,7 +151,7 @@ export default function CalendarPage() {
   const loadRecipes = async () => {
     const { data } = await supabase
       .from('recipes')
-      .select('id, name, image_url, prep_time_minutes, cook_time_minutes, ingredients')
+      .select('id, name, image_url, prep_time_minutes, cook_time_minutes, ingredients, estimated_cost_usd, cost_per_serving_usd')
       .order('name')
 
     if (data) setRecipes(data)
@@ -304,6 +306,26 @@ export default function CalendarPage() {
     .sort((a, b) => (b.inventoryScore || 0) - (a.inventoryScore || 0))
     .slice(0, 5)
 
+  // Calculate weekly budget based on planned meals
+  const weeklyBudget = weekDays.reduce((total, day) => {
+    let dayTotal = 0
+
+    // Add cost for each meal
+    const meals = [day.breakfast, day.lunch, day.dinner]
+    meals.forEach(meal => {
+      if (meal && meal.recipes.estimated_cost_usd) {
+        dayTotal += meal.recipes.estimated_cost_usd
+      }
+    })
+
+    return total + dayTotal
+  }, 0)
+
+  // Count total meals planned
+  const totalMealsPlanned = weekDays.reduce((count, day) => {
+    return count + [day.breakfast, day.lunch, day.dinner].filter(m => m !== null).length
+  }, 0)
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -312,6 +334,20 @@ export default function CalendarPage() {
           <div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">Meal Calendar</h1>
             <p className="text-indigo-100">Plan your week and never wonder "what's for dinner?"</p>
+            {totalMealsPlanned > 0 && weeklyBudget > 0 && (
+              <div className="mt-3 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-semibold">
+                  Weekly Budget: ${weeklyBudget.toFixed(2)}
+                </span>
+                <span className="text-indigo-200">•</span>
+                <span className="text-indigo-100">
+                  {totalMealsPlanned} meal{totalMealsPlanned !== 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
           </div>
           <Link
             href="/dashboard/shopping"
@@ -481,14 +517,21 @@ function MealSlot({
           >
             {meal.recipes.name}
           </button>
-          {meal.guest_count > 0 && (
-            <div className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              +{meal.guest_count} guest{meal.guest_count !== 1 ? 's' : ''}
-            </div>
-          )}
+          <div className="flex items-center gap-2 mt-1">
+            {meal.recipes.estimated_cost_usd && (
+              <div className="text-xs text-green-700 font-medium">
+                ${meal.recipes.estimated_cost_usd.toFixed(2)}
+              </div>
+            )}
+            {meal.guest_count > 0 && (
+              <div className="text-xs text-indigo-600 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                +{meal.guest_count} guest{meal.guest_count !== 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex flex-col gap-1">
           <button

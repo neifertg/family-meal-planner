@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import ReceiptScanner from '@/components/ReceiptScanner'
+import { ExtractedReceipt } from '@/lib/receiptScanner/types'
 
 type GroceryItem = {
   id: string
@@ -37,6 +39,7 @@ export default function ShoppingListPage() {
   const [newQuantity, setNewQuantity] = useState('')
   const [generating, setGenerating] = useState(false)
   const [familyId, setFamilyId] = useState<string | null>(null)
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -301,6 +304,72 @@ export default function ShoppingListPage() {
     if (!error) loadShoppingList()
   }
 
+  // Handle receipt processing
+  const handleReceiptProcessed = async (receipt: ExtractedReceipt) => {
+    if (!familyId) return
+
+    try {
+      // Process each receipt item
+      for (const receiptItem of receipt.items) {
+        // Try to match with existing inventory
+        const normalizedName = extractCoreIngredient(receiptItem.name)
+        let matchedInventoryItem: InventoryItem | null = null
+
+        for (const invItem of inventoryItems) {
+          const invNormalizedName = extractCoreIngredient(invItem.name)
+          const similarity = stringSimilarity(normalizedName, invNormalizedName)
+
+          if (similarity >= 0.75) {
+            matchedInventoryItem = invItem
+            break
+          }
+        }
+
+        if (matchedInventoryItem) {
+          // Update existing inventory item
+          await supabase
+            .from('inventory_items')
+            .update({ quantity_level: 'full' })
+            .eq('id', matchedInventoryItem.id)
+        } else {
+          // Add new inventory item
+          await supabase
+            .from('inventory_items')
+            .insert({
+              family_id: familyId,
+              name: receiptItem.name,
+              category: receiptItem.category || 'other',
+              quantity_level: 'full'
+            })
+        }
+
+        // Record price if available
+        if (receiptItem.price && receiptItem.price > 0) {
+          await supabase
+            .from('ingredient_prices')
+            .insert({
+              family_id: familyId,
+              ingredient_name: receiptItem.name,
+              price_usd: receiptItem.price,
+              quantity: receiptItem.quantity,
+              store_name: receipt.store_name,
+              purchase_date: receipt.purchase_date
+            })
+        }
+      }
+
+      // Reload inventory
+      await loadInventory()
+
+      // Show success message
+      alert(`✅ Receipt processed! Updated ${receipt.items.length} items in inventory.`)
+      setShowReceiptScanner(false)
+    } catch (error) {
+      console.error('Error processing receipt:', error)
+      alert('Failed to process receipt. Please try again.')
+    }
+  }
+
   // Check if an item is in inventory
   const checkInventoryStatus = (itemName: string) => {
     const normalizedName = extractCoreIngredient(itemName)
@@ -362,6 +431,15 @@ export default function ShoppingListPage() {
               </svg>
               View Calendar
             </Link>
+            <button
+              onClick={() => setShowReceiptScanner(true)}
+              className="bg-white hover:bg-white/90 text-emerald-700 font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 inline-flex items-center gap-2 shadow-md"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Scan Receipt
+            </button>
             <button
               onClick={generateFromMealPlan}
               disabled={generating}
@@ -507,6 +585,28 @@ export default function ShoppingListPage() {
             </button>
           </div>
         </>
+      )}
+
+      {/* Receipt Scanner Modal */}
+      {showReceiptScanner && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <h2 className="text-2xl font-bold text-gray-900">Scan Receipt</h2>
+              <button
+                onClick={() => setShowReceiptScanner(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <ReceiptScanner onReceiptProcessed={handleReceiptProcessed} />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
