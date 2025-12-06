@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import RecipePhotoOCR from '@/components/RecipePhotoOCR'
+import RecipeURLScraper from '@/components/RecipeURLScraper'
 import { parseRecipeText } from '@/lib/parseRecipeText'
+import { ScrapedRecipe } from '@/lib/recipeScraper/types'
 
 export default function NewRecipePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showOCR, setShowOCR] = useState(false)
+  const [showURLScraper, setShowURLScraper] = useState(false)
 
   // Form state
   const [name, setName] = useState('')
@@ -38,6 +41,22 @@ export default function NewRecipePage() {
     if (parsed.instructions) setInstructionsText(parsed.instructions)
 
     setShowOCR(false)
+  }
+
+  const handleRecipeScraped = (recipe: ScrapedRecipe) => {
+    // Fill in form fields with scraped data
+    if (recipe.name) setName(recipe.name)
+    if (recipe.description) setDescription(recipe.description)
+    if (recipe.prep_time_minutes) setPrepTime(recipe.prep_time_minutes.toString())
+    if (recipe.cook_time_minutes) setCookTime(recipe.cook_time_minutes.toString())
+    if (recipe.servings) setServings(recipe.servings.toString())
+    if (recipe.cuisine) setCuisine(recipe.cuisine)
+    if (recipe.category) setCategory(recipe.category)
+    if (recipe.image_url) setImageUrl(recipe.image_url)
+    if (recipe.ingredients) setIngredientsText(recipe.ingredients.join('\n'))
+    if (recipe.instructions) setInstructionsText(recipe.instructions.join('\n'))
+
+    setShowURLScraper(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -139,6 +158,33 @@ export default function NewRecipePage() {
             <p className="text-sm">{error}</p>
           </div>
         )}
+
+        {/* URL Scraper Section */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span className="text-2xl">🔗</span>
+              Import from URL
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowURLScraper(!showURLScraper)}
+              className="text-sm font-medium text-purple-600 hover:text-purple-700 transition-colors"
+            >
+              {showURLScraper ? 'Hide' : 'Show'}
+            </button>
+          </div>
+
+          {showURLScraper && (
+            <RecipeURLScraper onRecipeScraped={handleRecipeScraped} />
+          )}
+
+          {!showURLScraper && (
+            <p className="text-sm text-gray-600">
+              Have a recipe URL? Click "Show" to import recipe data from websites automatically.
+            </p>
+          )}
+        </div>
 
         {/* OCR Photo Upload Section */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
