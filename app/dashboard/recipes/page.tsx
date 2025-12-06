@@ -95,30 +95,12 @@ export default function RecipesPage() {
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/dashboard/recipes/new"
-                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 inline-flex items-center gap-2"
+                className="bg-white hover:bg-white/90 text-rose-600 font-semibold py-2.5 px-6 rounded-lg transition-all duration-200 inline-flex items-center gap-2 shadow-md"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Create
-              </Link>
-              <Link
-                href="/dashboard/recipes/import"
-                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 inline-flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Import
-              </Link>
-              <Link
-                href="/dashboard/recipes/bulk-import"
-                className="bg-white hover:bg-white/90 text-rose-600 font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 inline-flex items-center gap-2 shadow-md"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                </svg>
-                Bulk Import
+                Add Recipe
               </Link>
             </div>
           </div>
@@ -211,22 +193,14 @@ export default function RecipesPage() {
             </svg>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No recipes yet</h2>
             <p className="text-gray-600 mb-6">
-              Start building your collection by importing recipes or creating your own
+              Start building your collection by adding your first recipe
             </p>
-            <div className="flex justify-center gap-4">
-              <Link
-                href="/dashboard/recipes/import"
-                className="inline-block bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                Import Recipe
-              </Link>
-              <Link
-                href="/dashboard/recipes/new"
-                className="inline-block bg-gradient-to-r from-purple-500 to-rose-500 hover:from-purple-600 hover:to-rose-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                Create Recipe
-              </Link>
-            </div>
+            <Link
+              href="/dashboard/recipes/new"
+              className="inline-block bg-gradient-to-r from-orange-500 via-pink-500 to-rose-500 hover:from-orange-600 hover:via-pink-600 hover:to-rose-600 text-white font-semibold py-3 px-8 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+            >
+              Add Your First Recipe
+            </Link>
           </div>
         )}
 
