@@ -9,6 +9,7 @@ type InventoryItem = {
   category: 'produce' | 'dairy' | 'meat' | 'pantry' | 'frozen'
   quantity_level: 'low' | 'medium' | 'full'
   expiration_date: string | null
+  purchase_date: string | null
   created_at: string
   updated_at: string
 }
@@ -366,20 +367,27 @@ export default function InventoryPage() {
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <h4 className="font-semibold text-gray-900">{item.name}</h4>
-                          {item.expiration_date && (
-                            <p className={`text-sm mt-1 ${
-                              isExpired(item.expiration_date)
-                                ? 'text-red-600 font-semibold'
-                                : isExpiringSoon(item.expiration_date)
-                                ? 'text-orange-600 font-medium'
-                                : 'text-gray-500'
-                            }`}>
-                              {isExpired(item.expiration_date) ? '⚠️ Expired: ' : ''}
-                              {isExpiringSoon(item.expiration_date) && !isExpired(item.expiration_date) ? '⏰ Expires: ' : ''}
-                              {!isExpired(item.expiration_date) && !isExpiringSoon(item.expiration_date) ? 'Expires: ' : ''}
-                              {formatDate(item.expiration_date)}
-                            </p>
-                          )}
+                          <div className="space-y-0.5">
+                            {item.purchase_date && (
+                              <p className="text-xs text-gray-500">
+                                📅 Purchased: {formatDate(item.purchase_date)}
+                              </p>
+                            )}
+                            {item.expiration_date && (
+                              <p className={`text-sm ${
+                                isExpired(item.expiration_date)
+                                  ? 'text-red-600 font-semibold'
+                                  : isExpiringSoon(item.expiration_date)
+                                  ? 'text-orange-600 font-medium'
+                                  : 'text-gray-500'
+                              }`}>
+                                {isExpired(item.expiration_date) ? '⚠️ Expired: ' : ''}
+                                {isExpiringSoon(item.expiration_date) && !isExpired(item.expiration_date) ? '⏰ Expires: ' : ''}
+                                {!isExpired(item.expiration_date) && !isExpiringSoon(item.expiration_date) ? 'Expires: ' : ''}
+                                {formatDate(item.expiration_date)}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <div className="flex gap-1">
                           <button
