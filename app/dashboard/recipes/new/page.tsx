@@ -25,6 +25,7 @@ export default function NewRecipePage() {
   const [cuisine, setCuisine] = useState('')
   const [category, setCategory] = useState('')
   const [imageUrl, setImageUrl] = useState('')
+  const [estimatedCost, setEstimatedCost] = useState('')
   const [ingredientsText, setIngredientsText] = useState('')
   const [instructionsText, setInstructionsText] = useState('')
 
@@ -128,6 +129,11 @@ export default function NewRecipePage() {
         .map(line => line.trim().replace(/^\d+\.\s*/, '')) // Remove leading numbers
         .filter(line => line.length > 0)
 
+      // Calculate cost per serving if cost and servings are provided
+      const totalCost = estimatedCost ? parseFloat(estimatedCost) : null
+      const servingCount = servings ? parseInt(servings) : null
+      const costPerServing = (totalCost && servingCount) ? totalCost / servingCount : null
+
       // Create recipe - ensure all string fields are safely trimmed
       const recipeData = {
         family_id: familyId,
@@ -138,10 +144,12 @@ export default function NewRecipePage() {
         total_time_minutes: (prepTime || cookTime)
           ? (parseInt(prepTime || '0') + parseInt(cookTime || '0'))
           : null,
-        servings: servings ? parseInt(servings) : null,
+        servings: servingCount,
         cuisine: (cuisine || '').trim() || null,
         category: (category || '').trim() || null,
         image_url: (imageUrl || '').trim() || null,
+        estimated_cost_usd: totalCost,
+        cost_per_serving_usd: costPerServing,
         ingredients,
         instructions,
         created_by: user.id,
@@ -301,7 +309,7 @@ export default function NewRecipePage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div>
                 <label htmlFor="prepTime" className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Prep (min)
@@ -343,6 +351,22 @@ export default function NewRecipePage() {
                   onChange={(e) => setServings(e.target.value)}
                   placeholder="4"
                   min="1"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="estimatedCost" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Cost ($)
+                </label>
+                <input
+                  type="number"
+                  id="estimatedCost"
+                  value={estimatedCost}
+                  onChange={(e) => setEstimatedCost(e.target.value)}
+                  placeholder="12.00"
+                  min="0"
+                  step="0.01"
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
                 />
               </div>
