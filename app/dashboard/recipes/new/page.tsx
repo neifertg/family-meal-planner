@@ -4,11 +4,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import RecipePhotoOCR from '@/components/RecipePhotoOCR'
+import { parseRecipeText } from '@/lib/parseRecipeText'
 
 export default function NewRecipePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showOCR, setShowOCR] = useState(false)
 
   // Form state
   const [name, setName] = useState('')
@@ -21,6 +24,21 @@ export default function NewRecipePage() {
   const [imageUrl, setImageUrl] = useState('')
   const [ingredientsText, setIngredientsText] = useState('')
   const [instructionsText, setInstructionsText] = useState('')
+
+  const handleTextExtracted = (text: string) => {
+    const parsed = parseRecipeText(text)
+
+    // Fill in form fields with parsed data
+    if (parsed.name) setName(parsed.name)
+    if (parsed.description) setDescription(parsed.description)
+    if (parsed.prepTime) setPrepTime(parsed.prepTime)
+    if (parsed.cookTime) setCookTime(parsed.cookTime)
+    if (parsed.servings) setServings(parsed.servings)
+    if (parsed.ingredients) setIngredientsText(parsed.ingredients)
+    if (parsed.instructions) setInstructionsText(parsed.instructions)
+
+    setShowOCR(false)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -121,6 +139,33 @@ export default function NewRecipePage() {
             <p className="text-sm">{error}</p>
           </div>
         )}
+
+        {/* OCR Photo Upload Section */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span className="text-2xl">📸</span>
+              Upload Recipe Photo
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowOCR(!showOCR)}
+              className="text-sm font-medium text-purple-600 hover:text-purple-700 transition-colors"
+            >
+              {showOCR ? 'Hide' : 'Show'}
+            </button>
+          </div>
+
+          {showOCR && (
+            <RecipePhotoOCR onTextExtracted={handleTextExtracted} />
+          )}
+
+          {!showOCR && (
+            <p className="text-sm text-gray-600">
+              Have a recipe photo? Click "Show" to upload an image and we'll automatically extract the recipe text using OCR.
+            </p>
+          )}
+        </div>
 
         {/* Basic Info */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
