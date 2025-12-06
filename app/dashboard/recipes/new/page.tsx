@@ -50,8 +50,8 @@ export default function NewRecipePage() {
     if (recipe.prep_time_minutes) setPrepTime(recipe.prep_time_minutes.toString())
     if (recipe.cook_time_minutes) setCookTime(recipe.cook_time_minutes.toString())
     if (recipe.servings) setServings(recipe.servings.toString())
-    if (recipe.cuisine) setCuisine(recipe.cuisine || '')
-    if (recipe.category) setCategory(recipe.category || '')
+    setCuisine(recipe.cuisine || '')
+    setCategory(recipe.category || '')
     if (recipe.image_url) setImageUrl(recipe.image_url)
 
     // Convert structured ingredients to text
