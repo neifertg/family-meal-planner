@@ -1,17 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { ScrapedRecipe } from '@/lib/recipeScraper/types'
+import { ExtractedRecipe } from '@/lib/llmRecipeExtractor/types'
 
 type RecipeURLScraperProps = {
-  onRecipeScraped: (recipe: ScrapedRecipe) => void
+  onRecipeScraped: (recipe: ExtractedRecipe) => void
+}
+
+type ExtractionInfo = {
+  method: string
+  confidence?: number
+  tokensUsed?: number
 }
 
 export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperProps) {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [scrapedRecipe, setScrapedRecipe] = useState<ScrapedRecipe | null>(null)
+  const [scrapedRecipe, setScrapedRecipe] = useState<ExtractedRecipe | null>(null)
+  const [extractionInfo, setExtractionInfo] = useState<ExtractionInfo | null>(null)
 
   const handleScrape = async () => {
     if (!url.trim()) {
@@ -22,6 +29,7 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
     setError(null)
     setLoading(true)
     setScrapedRecipe(null)
+    setExtractionInfo(null)
 
     try {
       const response = await fetch('/api/scrape-recipe', {
@@ -36,13 +44,18 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
 
       if (result.success && result.recipe) {
         setScrapedRecipe(result.recipe)
+        setExtractionInfo({
+          method: result.extraction_method,
+          confidence: result.confidence,
+          tokensUsed: result.tokens_used,
+        })
         onRecipeScraped(result.recipe)
       } else {
-        setError(result.error || 'Failed to scrape recipe')
+        setError(result.error || 'Failed to extract recipe')
       }
     } catch (err: any) {
-      console.error('Scraping error:', err)
-      setError('Failed to scrape recipe. Please try again.')
+      console.error('Extraction error:', err)
+      setError('Failed to extract recipe. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -51,6 +64,7 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
   const handleClear = () => {
     setUrl('')
     setScrapedRecipe(null)
+    setExtractionInfo(null)
     setError(null)
   }
 
@@ -118,9 +132,9 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
           <div className="flex items-center gap-3">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
             <div className="text-sm text-purple-800">
-              <p className="font-semibold">Extracting recipe data...</p>
+              <p className="font-semibold">🤖 AI is extracting recipe data...</p>
               <p className="text-xs text-purple-700 mt-0.5">
-                This may take a few seconds
+                Using smart extraction - works with any recipe format
               </p>
             </div>
           </div>
@@ -136,7 +150,7 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
       )}
 
       {/* Success Preview */}
-      {scrapedRecipe && !loading && (
+      {scrapedRecipe && !loading && extractionInfo && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <svg
@@ -154,14 +168,29 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
             </svg>
             <div className="flex-1">
               <p className="font-semibold text-green-800">
-                Successfully imported: {scrapedRecipe.name}
+                ✨ Successfully extracted: {scrapedRecipe.title}
               </p>
               <p className="text-sm text-green-700 mt-1">
                 {scrapedRecipe.ingredients.length} ingredients • {scrapedRecipe.instructions.length} steps
               </p>
+              <div className="flex gap-2 mt-2 text-xs">
+                <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
+                  {extractionInfo.method === 'schema.org' ? '⚡ Schema.org' : '🤖 AI-Powered'}
+                </span>
+                {extractionInfo.confidence && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                    {extractionInfo.confidence}% confidence
+                  </span>
+                )}
+                {extractionInfo.tokensUsed && (
+                  <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded">
+                    {extractionInfo.tokensUsed} tokens
+                  </span>
+                )}
+              </div>
               <button
                 onClick={handleClear}
-                className="mt-2 text-sm font-medium text-green-700 hover:text-green-800 underline"
+                className="mt-3 text-sm font-medium text-green-700 hover:text-green-800 underline"
               >
                 Import another recipe
               </button>
@@ -187,11 +216,12 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
             />
           </svg>
           <div className="text-sm text-blue-800">
-            <p className="font-semibold mb-1">Supported sites:</p>
+            <p className="font-semibold mb-1">🤖 AI-Powered Extraction:</p>
             <ul className="list-disc list-inside space-y-1 text-blue-700">
-              <li>Most major recipe websites (AllRecipes, Food Network, etc.)</li>
-              <li>Personal blogs using Recipe schema.org markup</li>
-              <li>Sites with structured recipe data</li>
+              <li>Works with ANY recipe website - no special formatting needed</li>
+              <li>Intelligently extracts ingredients, quantities, and instructions</li>
+              <li>Automatically categorizes recipes and identifies dietary info</li>
+              <li>Fast schema.org extraction when available, AI fallback otherwise</li>
             </ul>
           </div>
         </div>

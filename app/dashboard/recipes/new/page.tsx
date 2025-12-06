@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import RecipePhotoOCR from '@/components/RecipePhotoOCR'
 import RecipeURLScraper from '@/components/RecipeURLScraper'
 import { parseRecipeText } from '@/lib/parseRecipeText'
-import { ScrapedRecipe } from '@/lib/recipeScraper/types'
+import { ExtractedRecipe } from '@/lib/llmRecipeExtractor/types'
 
 export default function NewRecipePage() {
   const router = useRouter()
@@ -43,9 +43,9 @@ export default function NewRecipePage() {
     setShowOCR(false)
   }
 
-  const handleRecipeScraped = (recipe: ScrapedRecipe) => {
-    // Fill in form fields with scraped data
-    if (recipe.name) setName(recipe.name)
+  const handleRecipeScraped = (recipe: ExtractedRecipe) => {
+    // Fill in form fields with extracted data
+    if (recipe.title) setName(recipe.title)
     if (recipe.description) setDescription(recipe.description)
     if (recipe.prep_time_minutes) setPrepTime(recipe.prep_time_minutes.toString())
     if (recipe.cook_time_minutes) setCookTime(recipe.cook_time_minutes.toString())
@@ -53,8 +53,25 @@ export default function NewRecipePage() {
     if (recipe.cuisine) setCuisine(recipe.cuisine)
     if (recipe.category) setCategory(recipe.category)
     if (recipe.image_url) setImageUrl(recipe.image_url)
-    if (recipe.ingredients) setIngredientsText(recipe.ingredients.join('\n'))
-    if (recipe.instructions) setInstructionsText(recipe.instructions.join('\n'))
+
+    // Convert structured ingredients to text
+    if (recipe.ingredients) {
+      const ingredientsText = recipe.ingredients.map(ing => {
+        let text = ''
+        if (ing.quantity) text += `${ing.quantity} `
+        if (ing.unit) text += `${ing.unit} `
+        text += ing.item
+        if (ing.preparation) text += `, ${ing.preparation}`
+        return text
+      }).join('\n')
+      setIngredientsText(ingredientsText)
+    }
+
+    // Convert structured instructions to text
+    if (recipe.instructions) {
+      const instructionsText = recipe.instructions.map(inst => inst.instruction).join('\n')
+      setInstructionsText(instructionsText)
+    }
 
     setShowURLScraper(false)
   }
