@@ -311,6 +311,8 @@ export default function ShoppingListPage() {
     if (!familyId) return
 
     try {
+      let shoppingListMatches = 0
+
       // Process each receipt item
       for (const receiptItem of receipt.items) {
         // Try to match with existing inventory
@@ -357,6 +359,21 @@ export default function ShoppingListPage() {
             })
         }
 
+        // Check if this item is on the shopping list and mark it as checked
+        for (const shoppingItem of items) {
+          const shoppingNormalizedName = extractCoreIngredient(shoppingItem.name)
+          const similarity = stringSimilarity(normalizedName, shoppingNormalizedName)
+
+          if (similarity >= 0.75 && !shoppingItem.is_checked) {
+            await supabase
+              .from('grocery_list_items')
+              .update({ is_checked: true })
+              .eq('id', shoppingItem.id)
+            shoppingListMatches++
+            break
+          }
+        }
+
         // Record price if available
         if (receiptItem.price && receiptItem.price > 0) {
           await supabase
@@ -372,11 +389,13 @@ export default function ShoppingListPage() {
         }
       }
 
-      // Reload inventory
+      // Reload inventory and shopping list
       await loadInventory()
+      await loadShoppingList()
 
       // Show success message
-      alert(`✅ Receipt processed! Updated ${receipt.items.length} items in inventory.`)
+      const message = `✅ Receipt processed! Updated ${receipt.items.length} items in inventory${shoppingListMatches > 0 ? ` and checked off ${shoppingListMatches} shopping list items` : ''}.`
+      alert(message)
       setShowReceiptScanner(false)
     } catch (error) {
       console.error('Error processing receipt:', error)
