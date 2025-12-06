@@ -3,14 +3,40 @@
  *
  * Hybrid approach:
  * 1. Try schema.org JSON-LD first (fast, free)
- * 2. Fall back to Gemini LLM extraction if needed
+ * 2. Fall back to AI (Claude or Gemini) extraction if needed
  * 3. Support images via OCR + LLM
  */
 
 import { ExtractionResult, ContentSource, ExtractedRecipe } from './types'
 import { extractRecipeWithGemini } from './geminiExtractor'
+import { extractRecipeWithClaude } from './claudeExtractor'
 import { scrapeRecipeFromSchemaOrg } from '../recipeScraper/schemaOrgParser'
 import { ScrapedRecipe } from '../recipeScraper/types'
+
+/**
+ * Get configured AI provider from environment
+ */
+function getAIProvider(): 'claude' | 'gemini' | 'auto' {
+  const provider = process.env.AI_PROVIDER?.toLowerCase()
+  if (provider === 'claude' || provider === 'gemini') {
+    return provider
+  }
+  return 'auto' // Auto-detect based on available API keys
+}
+
+/**
+ * Detect which AI provider is available
+ */
+function detectAvailableProvider(): 'claude' | 'gemini' | null {
+  const hasAnthropic = !!process.env.ANTHROPIC_API_KEY
+  const hasGemini = !!process.env.GEMINI_API_KEY
+
+  // Prefer Claude if both available (generally better for structured output)
+  if (hasAnthropic) return 'claude'
+  if (hasGemini) return 'gemini'
+
+  return null
+}
 
 /**
  * Convert old ScrapedRecipe format to new ExtractedRecipe format
@@ -114,12 +140,33 @@ export async function extractRecipe(
       }
     }
 
-    console.log('Schema.org not found, falling back to LLM extraction...')
+    console.log('Schema.org not found, falling back to AI extraction...')
   }
 
-  // Strategy 2: LLM extraction (Gemini)
-  console.log('Using Gemini LLM for extraction...')
-  return await extractRecipeWithGemini(source)
+  // Strategy 2: AI extraction (Claude or Gemini)
+  const configuredProvider = getAIProvider()
+  let provider: 'claude' | 'gemini' | null
+
+  if (configuredProvider === 'auto') {
+    provider = detectAvailableProvider()
+    if (!provider) {
+      return {
+        success: false,
+        error: 'No AI provider configured. Please set ANTHROPIC_API_KEY or GEMINI_API_KEY in .env.local',
+        extraction_method: 'fallback',
+      }
+    }
+  } else {
+    provider = configuredProvider
+  }
+
+  console.log(`Using ${provider.toUpperCase()} AI for extraction...`)
+
+  if (provider === 'claude') {
+    return await extractRecipeWithClaude(source)
+  } else {
+    return await extractRecipeWithGemini(source)
+  }
 }
 
 /**
