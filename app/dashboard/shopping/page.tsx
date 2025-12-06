@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import ReceiptScanner from '@/components/ReceiptScanner'
 import { ExtractedReceipt } from '@/lib/receiptScanner/types'
+import { estimateExpirationDate } from '@/lib/expirationEstimator'
 
 type GroceryItem = {
   id: string
@@ -21,6 +22,7 @@ type InventoryItem = {
   category: string
   quantity_level: 'low' | 'medium' | 'full'
   expiration_date: string | null
+  purchase_date: string | null
 }
 
 type GroceryItemWithInventory = GroceryItem & {
@@ -325,21 +327,33 @@ export default function ShoppingListPage() {
           }
         }
 
+        // Estimate expiration date based on purchase date
+        const expirationDate = await estimateExpirationDate(
+          receiptItem.name,
+          receipt.purchase_date
+        )
+
         if (matchedInventoryItem) {
-          // Update existing inventory item
+          // Update existing inventory item with purchase date and new expiration
           await supabase
             .from('inventory_items')
-            .update({ quantity_level: 'full' })
+            .update({
+              quantity_level: 'full',
+              purchase_date: receipt.purchase_date,
+              expiration_date: expirationDate
+            })
             .eq('id', matchedInventoryItem.id)
         } else {
-          // Add new inventory item
+          // Add new inventory item with purchase date and expiration
           await supabase
             .from('inventory_items')
             .insert({
               family_id: familyId,
               name: receiptItem.name,
               category: receiptItem.category || 'other',
-              quantity_level: 'full'
+              quantity_level: 'full',
+              purchase_date: receipt.purchase_date,
+              expiration_date: expirationDate
             })
         }
 
