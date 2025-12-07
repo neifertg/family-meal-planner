@@ -321,16 +321,47 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Receipt Image</h3>
                 <div className="bg-blue-50 border border-blue-200 rounded px-3 py-2 mb-3">
                   <p className="text-xs text-blue-800">
-                    <span className="font-semibold">💡 Tip:</span> Each item shows a numbered circle and the exact text Claude read from the receipt.
-                    Use this to verify accuracy and correct any mistakes before approving.
+                    <span className="font-semibold">💡 Tip:</span> Hover over items on the right to see their line numbers highlighted on the receipt.
+                    The numbers help you verify which line Claude read from.
                   </p>
                 </div>
-                <div className="relative inline-block">
+                <div className="relative inline-block w-full">
                   <img
                     src={previewUrl}
                     alt="Receipt"
                     className="w-full h-auto max-h-[600px] object-contain border border-gray-300 rounded"
                   />
+                  {/* Overlay line number markers */}
+                  <div className="absolute top-0 left-0 w-full pointer-events-none">
+                    {editableItems.map((item, index) => {
+                      if (!item.line_number) return null
+
+                      // Calculate vertical position based on line number
+                      // Assuming receipt has ~50 lines, each line is ~2% of height
+                      const topPercent = (item.line_number * 2) + '%'
+                      const isHovered = hoveredItemIndex === index
+
+                      return (
+                        <div
+                          key={index}
+                          className={`absolute left-2 transition-all duration-200 ${
+                            isHovered
+                              ? 'scale-125 z-10'
+                              : 'opacity-70 hover:opacity-100'
+                          }`}
+                          style={{ top: topPercent }}
+                        >
+                          <div className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs shadow-lg ${
+                            isHovered
+                              ? 'bg-yellow-400 text-gray-900 ring-4 ring-yellow-300'
+                              : 'bg-blue-600 text-white'
+                          }`}>
+                            {item.line_number}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             )}
