@@ -124,20 +124,26 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
         })
 
         // Generate cropped images for items with bounding boxes
+        console.log('Starting image cropping for', itemsWithBoundingBoxes.length, 'items')
         const itemsWithCroppedImages = await Promise.all(
-          itemsWithBoundingBoxes.map(async (item) => {
+          itemsWithBoundingBoxes.map(async (item, index) => {
             if (item.bounding_box && imageData) {
               try {
+                console.log(`Cropping item ${index}: ${item.name}`, item.bounding_box)
                 const croppedImage = await cropImageSegment(imageData, item.bounding_box, 5)
+                console.log(`Successfully cropped item ${index}: ${item.name}`)
                 return { ...item, cropped_image: croppedImage }
               } catch (error) {
                 console.error('Failed to crop image for item:', item.name, error)
                 return item
               }
+            } else {
+              console.log(`Skipping item ${index}: ${item.name} - no bounding box`)
             }
             return item
           })
         )
+        console.log('Finished cropping, items with cropped_image:', itemsWithCroppedImages.filter(i => i.cropped_image).length)
 
         const enhancedReceipt = {
           ...claudeResult.receipt,
@@ -388,7 +394,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                     onMouseLeave={() => setHoveredItemIndex(null)}
                   >
                     {/* Cropped receipt image showing this item */}
-                    {item.cropped_image && (
+                    {item.cropped_image ? (
                       <div className="mb-3">
                         <div className="text-xs font-medium text-gray-600 mb-1">From receipt:</div>
                         <img
@@ -396,6 +402,10 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                           alt={`Receipt segment for ${item.name}`}
                           className="border border-gray-300 rounded bg-white max-h-16 object-contain"
                         />
+                      </div>
+                    ) : (
+                      <div className="mb-2 text-xs text-gray-400">
+                        Debug: No cropped image - bbox: {item.bounding_box ? 'yes' : 'no'}, source: {item.source_text ? 'yes' : 'no'}
                       </div>
                     )}
 
