@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import BudgetTracker from '@/components/BudgetTracker'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -100,6 +101,9 @@ export default async function DashboardPage() {
           <div className="text-sm font-medium text-white/90">Monthly Budget</div>
         </div>
       </div>
+
+      {/* Budget Tracker */}
+      <BudgetTracker familyId={family?.id || null} />
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Upcoming Meals */}
