@@ -332,13 +332,14 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                     className="w-full h-auto max-h-[600px] object-contain border border-gray-300 rounded"
                   />
                   {/* Overlay line number markers */}
-                  <div className="absolute top-0 left-0 w-full pointer-events-none">
+                  <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
                     {editableItems.map((item, index) => {
                       if (!item.line_number) return null
 
-                      // Calculate vertical position based on line number
-                      // Assuming receipt has ~50 lines, each line is ~2% of height
-                      const topPercent = (item.line_number * 2) + '%'
+                      // Use position_percent if available (from Claude), otherwise fallback to line_number calculation
+                      const topPercent = item.position_percent !== undefined
+                        ? item.position_percent + '%'
+                        : (item.line_number * 2) + '%'
                       const isHovered = hoveredItemIndex === index
 
                       return (
