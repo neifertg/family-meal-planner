@@ -20,6 +20,7 @@ Extract the following information:
   - unit_price (number): Price per unit if calculable
   - source_text (string): EXACT text from the receipt for this item (including any codes/abbreviations)
   - line_number (number): Approximate line number where this item appears on the receipt
+  - position_percent (number): Vertical position of this item as a percentage (0-100) from top of receipt to bottom
 - subtotal (number): Subtotal before tax
 - tax (number): Tax amount
 - total (number): Total amount paid
@@ -35,7 +36,8 @@ IMPORTANT INSTRUCTIONS:
 6. Handle multi-line item descriptions correctly
 7. For source_text: Include the EXACT text as it appears on the receipt (e.g., "CHK BRE 2LB" not "Chicken Breast")
 8. For line_number: Count from top of receipt, starting at 1
-9. Return ONLY valid JSON - no markdown, no explanations
+9. For position_percent: Estimate where vertically on the receipt this item appears (0 = very top, 100 = very bottom)
+10. Return ONLY valid JSON - no markdown, no explanations
 
 If a field is not found in the receipt, omit it from the JSON (don't use null).`
 
