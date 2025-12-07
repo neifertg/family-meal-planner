@@ -25,14 +25,25 @@ export default function ReceiptsPage() {
   }, [familyId, selectedMonth])
 
   const loadFamily = async () => {
-    const { data } = await supabase
+    // Get family_id from family_members
+    const { data: memberData } = await supabase
       .from('family_members')
-      .select('family_id, families(monthly_budget)')
+      .select('family_id')
       .single()
 
-    if (data) {
-      setFamilyId(data.family_id)
-      setMonthlyBudget((data.families as any)?.monthly_budget || null)
+    if (memberData?.family_id) {
+      setFamilyId(memberData.family_id)
+
+      // Get family budget
+      const { data: familyData } = await supabase
+        .from('families')
+        .select('monthly_budget')
+        .eq('id', memberData.family_id)
+        .single()
+
+      if (familyData) {
+        setMonthlyBudget(familyData.monthly_budget || null)
+      }
     }
   }
 
