@@ -93,7 +93,10 @@ export function matchSourceTextToBoundingBox(
   sourceText: string,
   ocrResult: OCRResult
 ): BoundingBox | null {
+  console.log('matchSourceTextToBoundingBox called:', { sourceText, ocrWordCount: ocrResult.words.length })
+
   if (!sourceText || ocrResult.words.length === 0) {
+    console.log('Early return - no source text or no OCR words')
     return null
   }
 
@@ -101,7 +104,10 @@ export function matchSourceTextToBoundingBox(
   const normalizedSource = sourceText.toLowerCase().replace(/[^a-z0-9\s]/g, '')
   const sourceWords = normalizedSource.split(/\s+/).filter(w => w.length > 0)
 
+  console.log('Normalized source:', { normalizedSource, sourceWords })
+
   if (sourceWords.length === 0) {
+    console.log('Early return - no source words after normalization')
     return null
   }
 
@@ -143,19 +149,23 @@ export function matchSourceTextToBoundingBox(
 
   // If we found a match, calculate combined bounding box
   if (bestMatch.length > 0) {
+    console.log('Found match! bestMatch words:', bestMatch.map(w => w.text))
     const minX = Math.min(...bestMatch.map(w => w.bbox.x))
     const minY = Math.min(...bestMatch.map(w => w.bbox.y))
     const maxX = Math.max(...bestMatch.map(w => w.bbox.x + w.bbox.width))
     const maxY = Math.max(...bestMatch.map(w => w.bbox.y + w.bbox.height))
 
-    return {
+    const bbox = {
       x: minX,
       y: minY,
       width: maxX - minX,
       height: maxY - minY
     }
+    console.log('Returning bounding box:', bbox)
+    return bbox
   }
 
+  console.log('No match found for source text:', sourceText)
   return null
 }
 
