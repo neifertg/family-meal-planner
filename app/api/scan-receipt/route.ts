@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractReceiptFromImage } from '@/lib/receiptScanner/claudeExtractor'
+import { getVendorLearningExamples, getGeneralLearningExamples } from '@/lib/receiptScanner/learningSystem'
 
 export async function POST(request: NextRequest) {
   try {
-    const { imageData } = await request.json()
+    const { imageData, familyId, storeName } = await request.json()
 
     if (!imageData) {
       return NextResponse.json(
@@ -31,8 +32,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Extract receipt using Claude Vision
-    const result = await extractReceiptFromImage(imageBase64, mimeType)
+    // Fetch learning examples to improve extraction accuracy
+    let learningExamples: any[] = []
+    if (familyId) {
+      // Try vendor-specific examples first
+      if (storeName) {
+        learningExamples = await getVendorLearningExamples(familyId, storeName, 10)
+      }
+
+      // If no vendor-specific examples, get general ones
+      if (learningExamples.length === 0) {
+        learningExamples = await getGeneralLearningExamples(familyId, 5)
+      }
+    }
+
+    // Extract receipt using Claude Vision with learning examples
+    const result = await extractReceiptFromImage(imageBase64, mimeType, learningExamples)
 
     return NextResponse.json(result)
 
