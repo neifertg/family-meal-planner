@@ -11,6 +11,8 @@ export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState(new Date())
+  const [isEditingBudget, setIsEditingBudget] = useState(false)
+  const [budgetInput, setBudgetInput] = useState('')
 
   const supabase = createClient()
 
@@ -133,6 +135,39 @@ export default function ReceiptsPage() {
            selectedMonth.getFullYear() === now.getFullYear()
   }
 
+  const handleEditBudget = () => {
+    setBudgetInput(monthlyBudget?.toString() || '')
+    setIsEditingBudget(true)
+  }
+
+  const handleSaveBudget = async () => {
+    if (!familyId) return
+
+    const newBudget = parseFloat(budgetInput)
+    if (isNaN(newBudget) || newBudget < 0) {
+      alert('Please enter a valid budget amount')
+      return
+    }
+
+    const { error } = await supabase
+      .from('families')
+      .update({ monthly_budget: newBudget })
+      .eq('id', familyId)
+
+    if (error) {
+      console.error('Error updating budget:', error)
+      alert('Failed to update budget')
+    } else {
+      setMonthlyBudget(newBudget)
+      setIsEditingBudget(false)
+    }
+  }
+
+  const handleCancelBudget = () => {
+    setIsEditingBudget(false)
+    setBudgetInput('')
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -182,31 +217,73 @@ export default function ReceiptsPage() {
 
         {/* Budget Overview */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Budget Overview</h2>
-
-          <div className="grid md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="text-sm text-blue-700 font-medium mb-1">Monthly Budget</div>
-              <div className="text-2xl font-bold text-blue-900">
-                {monthlyBudget ? `$${monthlyBudget.toFixed(2)}` : 'Not set'}
-              </div>
-            </div>
-
-            <div className="bg-purple-50 rounded-lg p-4">
-              <div className="text-sm text-purple-700 font-medium mb-1">Total Spent</div>
-              <div className="text-2xl font-bold text-purple-900">${totalSpent.toFixed(2)}</div>
-            </div>
-
-            <div className={`rounded-lg p-4 ${remaining >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-              <div className={`text-sm font-medium mb-1 ${remaining >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                Remaining
-              </div>
-              <div className={`text-2xl font-bold ${remaining >= 0 ? 'text-green-900' : 'text-red-900'}`}>
-                ${Math.abs(remaining).toFixed(2)}
-                {remaining < 0 && ' over'}
-              </div>
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Budget Overview</h2>
+            {!isEditingBudget && (
+              <button
+                onClick={handleEditBudget}
+                className="px-3 py-1 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                {monthlyBudget ? 'Edit Budget' : 'Set Budget'}
+              </button>
+            )}
           </div>
+
+          {isEditingBudget ? (
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <div className="text-sm text-blue-700 font-medium mb-2">Set Monthly Budget</div>
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">$</span>
+                  <input
+                    type="number"
+                    value={budgetInput}
+                    onChange={(e) => setBudgetInput(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full pl-7 pr-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveBudget}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={handleCancelBudget}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="text-sm text-blue-700 font-medium mb-1">Monthly Budget</div>
+                <div className="text-2xl font-bold text-blue-900">
+                  {monthlyBudget ? `$${monthlyBudget.toFixed(2)}` : 'Not set'}
+                </div>
+              </div>
+
+              <div className="bg-purple-50 rounded-lg p-4">
+                <div className="text-sm text-purple-700 font-medium mb-1">Total Spent</div>
+                <div className="text-2xl font-bold text-purple-900">${totalSpent.toFixed(2)}</div>
+              </div>
+
+              <div className={`rounded-lg p-4 ${remaining >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                <div className={`text-sm font-medium mb-1 ${remaining >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  Remaining
+                </div>
+                <div className={`text-2xl font-bold ${remaining >= 0 ? 'text-green-900' : 'text-red-900'}`}>
+                  ${Math.abs(remaining).toFixed(2)}
+                  {remaining < 0 && ' over'}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Progress Bar */}
           {monthlyBudget && (
