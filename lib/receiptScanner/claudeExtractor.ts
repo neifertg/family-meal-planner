@@ -54,6 +54,8 @@ function getClaudeClient(): Anthropic {
 
 /**
  * Categorize grocery items
+ * Returns one of: 'produce', 'dairy', 'meat', 'pantry', 'frozen'
+ * Defaults to 'pantry' for uncategorized items
  */
 function categorizeItem(itemName: string): string {
   const lower = itemName.toLowerCase()
@@ -74,7 +76,8 @@ function categorizeItem(itemName: string): string {
     return 'pantry'
   }
 
-  return 'other'
+  // Default to 'pantry' for uncategorized items (matches database constraint)
+  return 'pantry'
 }
 
 /**
