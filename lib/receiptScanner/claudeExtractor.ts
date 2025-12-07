@@ -72,14 +72,35 @@ function categorizeItem(itemName: string): string {
 }
 
 /**
+ * Format learning examples for the prompt
+ */
+function formatLearningExamples(examples: any[]): string {
+  if (examples.length === 0) {
+    return ''
+  }
+
+  const formatted = examples
+    .slice(0, 10) // Limit to 10 examples to keep prompt concise
+    .map(ex => `  - AI extracted: "${ex.ai_extracted_name}" → User corrected to: "${ex.corrected_name}"`)
+    .join('\n')
+
+  return `\n\nPREVIOUS CORRECTIONS (learn from these):\n${formatted}\n\nUse these examples to improve extraction accuracy for similar items.`
+}
+
+/**
  * Extract receipt from image using Claude Vision
  */
 export async function extractReceiptFromImage(
   imageData: string,
-  mimeType: string = 'image/jpeg'
+  mimeType: string = 'image/jpeg',
+  learningExamples: any[] = []
 ): Promise<ReceiptExtractionResult> {
   try {
     const client = getClaudeClient()
+
+    // Build prompt with learning examples if available
+    const learningContext = formatLearningExamples(learningExamples)
+    const fullPrompt = `${EXTRACTION_PROMPT}${learningContext}\n\nExtract the receipt data from this image. Return the data as JSON:`
 
     // Call Claude with vision
     const message = await client.messages.create({
@@ -100,7 +121,7 @@ export async function extractReceiptFromImage(
             },
             {
               type: 'text',
-              text: `${EXTRACTION_PROMPT}\n\nExtract the receipt data from this image. Return the data as JSON:`
+              text: fullPrompt
             }
           ],
         }

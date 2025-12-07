@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ExtractedReceipt, ReceiptItem } from '@/lib/receiptScanner/types'
+import { saveReceiptCorrections } from '@/lib/receiptScanner/learningSystem'
+import { createClient } from '@/lib/supabase/client'
 
 type ReceiptScannerProps = {
   onReceiptProcessed: (receipt: ExtractedReceipt) => void
@@ -13,11 +15,28 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [extractedReceipt, setExtractedReceipt] = useState<ExtractedReceipt | null>(null)
+  const [originalItems, setOriginalItems] = useState<ReceiptItem[]>([]) // Store original for comparison
   const [editableItems, setEditableItems] = useState<ReceiptItem[]>([])
   const [showReview, setShowReview] = useState(false)
   const [confidence, setConfidence] = useState<number | null>(null)
   const [tokensUsed, setTokensUsed] = useState<number | null>(null)
   const [costUsd, setCostUsd] = useState<number | null>(null)
+  const [familyId, setFamilyId] = useState<string | null>(null)
+
+  const supabase = createClient()
+
+  useEffect(() => {
+    loadFamilyId()
+  }, [])
+
+  const loadFamilyId = async () => {
+    const { data } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .single()
+
+    if (data) setFamilyId(data.family_id)
+  }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -62,17 +81,22 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       imageReader.readAsDataURL(file)
       const imageData = await imageDataPromise
 
-      // Call API with image data
+      // Call API with image data and family context
       const response = await fetch('/api/scan-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData }),
+        body: JSON.stringify({
+          imageData,
+          familyId,
+          storeName: null // Will be populated from extracted receipt
+        }),
       })
 
       const result = await response.json()
 
       if (result.success && result.receipt) {
         setExtractedReceipt(result.receipt)
+        setOriginalItems([...result.receipt.items]) // Store original for learning
         setEditableItems([...result.receipt.items])
         setConfidence(result.confidence)
         setTokensUsed(result.tokens_used)
@@ -101,13 +125,30 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     setEditableItems(editableItems.filter((_, i) => i !== index))
   }
 
-  const handleApproveAll = () => {
-    if (!extractedReceipt) return
+  const handleApproveAll = async () => {
+    if (!extractedReceipt || !familyId) return
 
     const approvedReceipt: ExtractedReceipt = {
       ...extractedReceipt,
       items: editableItems
     }
+
+    // Save corrections for learning (async, don't block user)
+    saveReceiptCorrections(
+      {
+        family_id: familyId,
+        store_name: extractedReceipt.store_name || null,
+        purchase_date: extractedReceipt.purchase_date,
+        confidence_score: confidence,
+        tokens_used: tokensUsed,
+        cost_usd: costUsd
+      },
+      originalItems,
+      editableItems
+    ).catch(err => {
+      console.error('Failed to save corrections for learning:', err)
+      // Don't fail the user's workflow if learning save fails
+    })
 
     onReceiptProcessed(approvedReceipt)
   }
