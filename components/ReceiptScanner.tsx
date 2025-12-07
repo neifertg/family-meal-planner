@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { ExtractedReceipt, ReceiptItem, BoundingBox } from '@/lib/receiptScanner/types'
 import { saveReceiptCorrections } from '@/lib/receiptScanner/learningSystem'
 import { extractTextWithBoundingBoxes, matchSourceTextToBoundingBox, OCRResult } from '@/lib/receiptScanner/ocrExtractor'
+import { cropImageSegment } from '@/lib/receiptScanner/imageCropper'
 import { createClient } from '@/lib/supabase/client'
 import ReceiptImageWithHighlight from './ReceiptImageWithHighlight'
 
@@ -113,7 +114,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       setProgress(90)
 
       if (claudeResult.success && claudeResult.receipt) {
-        // Match Claude's extracted items to OCR bounding boxes
+        // Match Claude's extracted items to OCR bounding boxes and crop images
         const itemsWithBoundingBoxes = claudeResult.receipt.items.map((item: ReceiptItem) => {
           if (item.source_text && ocrData) {
             const bbox = matchSourceTextToBoundingBox(item.source_text, ocrData)
@@ -122,14 +123,30 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
           return item
         })
 
+        // Generate cropped images for items with bounding boxes
+        const itemsWithCroppedImages = await Promise.all(
+          itemsWithBoundingBoxes.map(async (item) => {
+            if (item.bounding_box && imageData) {
+              try {
+                const croppedImage = await cropImageSegment(imageData, item.bounding_box, 5)
+                return { ...item, cropped_image: croppedImage }
+              } catch (error) {
+                console.error('Failed to crop image for item:', item.name, error)
+                return item
+              }
+            }
+            return item
+          })
+        )
+
         const enhancedReceipt = {
           ...claudeResult.receipt,
-          items: itemsWithBoundingBoxes
+          items: itemsWithCroppedImages
         }
 
         setExtractedReceipt(enhancedReceipt)
-        setOriginalItems([...itemsWithBoundingBoxes]) // Store original for learning
-        setEditableItems([...itemsWithBoundingBoxes])
+        setOriginalItems([...itemsWithCroppedImages]) // Store original for learning
+        setEditableItems([...itemsWithCroppedImages])
         setConfidence(claudeResult.confidence)
         setTokensUsed(claudeResult.tokens_used)
         setCostUsd(claudeResult.cost_usd)
@@ -335,7 +352,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                   </p>
                 )}
                 <p className="text-xs text-gray-600 mt-2">
-                  💡 Hover over an item to see where it came from on the receipt
+                  💡 Each item shows the actual text from the receipt it was extracted from
                 </p>
               </div>
             </div>
@@ -370,8 +387,20 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                     onMouseEnter={() => setHoveredItemIndex(index)}
                     onMouseLeave={() => setHoveredItemIndex(null)}
                   >
-                    {/* Source text indicator */}
-                    {item.source_text && (
+                    {/* Cropped receipt image showing this item */}
+                    {item.cropped_image && (
+                      <div className="mb-3">
+                        <div className="text-xs font-medium text-gray-600 mb-1">From receipt:</div>
+                        <img
+                          src={item.cropped_image}
+                          alt={`Receipt segment for ${item.name}`}
+                          className="border border-gray-300 rounded bg-white max-h-16 object-contain"
+                        />
+                      </div>
+                    )}
+
+                    {/* Source text indicator (fallback if no cropped image) */}
+                    {!item.cropped_image && item.source_text && (
                       <div className="mb-2 flex items-center gap-2">
                         <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-600">
                           Receipt: "{item.source_text}"
