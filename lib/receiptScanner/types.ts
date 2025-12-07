@@ -20,6 +20,7 @@ export type ReceiptItem = {
   source_text?: string     // Raw text from receipt that this item came from
   line_number?: number     // Approximate line number on receipt (for visual alignment)
   bounding_box?: BoundingBox // Coordinates for highlighting on receipt image
+  cropped_image?: string   // Base64 data URL of cropped receipt segment showing this item
 }
 
 export type ExtractedReceipt = {
