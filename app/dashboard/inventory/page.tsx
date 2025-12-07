@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import ReceiptScanner from '@/components/ReceiptScanner'
 import { ExtractedReceipt } from '@/lib/receiptScanner/types'
-import { estimateExpirationDate } from '@/lib/expirationEstimator'
+import { estimateExpirationDate } from '@/lib/receiptScanner/expirationEstimator'
 
 type InventoryItem = {
   id: string
@@ -27,6 +27,7 @@ export default function InventoryPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showReceiptScanner, setShowReceiptScanner] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
+  const [editingExpirationId, setEditingExpirationId] = useState<string | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -164,8 +165,23 @@ export default function InventoryPage() {
     if (!error) loadInventory()
   }
 
+  const handleExpirationUpdate = async (id: string, newDate: string) => {
+    const { error } = await supabase
+      .from('inventory_items')
+      .update({ expiration_date: newDate || null })
+      .eq('id', id)
+
+    if (!error) {
+      loadInventory()
+      setEditingExpirationId(null)
+    } else {
+      console.error('Error updating expiration date:', error)
+      alert(`Failed to update expiration date: ${error.message}`)
+    }
+  }
+
   // Handle receipt processing
-  const handleReceiptProcessed = async (receipt: ExtractedReceipt) => {
+  const handleReceiptProcessed = async (receipt: ExtractedReceipt, applyToBudget: boolean) => {
     if (!familyId) return
 
     try {
@@ -176,9 +192,9 @@ export default function InventoryPage() {
           item.name.toLowerCase() === receiptItem.name.toLowerCase()
         )
 
-        // Estimate expiration date
-        const expirationDate = await estimateExpirationDate(
-          receiptItem.name,
+        // Estimate expiration date based on category
+        const expirationDate = estimateExpirationDate(
+          receiptItem.category,
           receipt.purchase_date
         )
 
@@ -439,7 +455,7 @@ export default function InventoryPage() {
                   {categoryItems.map((item) => (
                     <div
                       key={item.id}
-                      className={`p-4 rounded-lg border-2 ${
+                      className={`group p-4 rounded-lg border-2 ${
                         isExpired(item.expiration_date)
                           ? 'bg-red-50 border-red-200'
                           : isExpiringSoon(item.expiration_date)
@@ -456,19 +472,58 @@ export default function InventoryPage() {
                                 📅 Purchased: {formatDate(item.purchase_date)}
                               </p>
                             )}
-                            {item.expiration_date && (
-                              <p className={`text-sm ${
-                                isExpired(item.expiration_date)
-                                  ? 'text-red-600 font-semibold'
-                                  : isExpiringSoon(item.expiration_date)
-                                  ? 'text-orange-600 font-medium'
-                                  : 'text-gray-500'
-                              }`}>
-                                {isExpired(item.expiration_date) ? '⚠️ Expired: ' : ''}
-                                {isExpiringSoon(item.expiration_date) && !isExpired(item.expiration_date) ? '⏰ Expires: ' : ''}
-                                {!isExpired(item.expiration_date) && !isExpiringSoon(item.expiration_date) ? 'Expires: ' : ''}
-                                {formatDate(item.expiration_date)}
-                              </p>
+                            {editingExpirationId === item.id ? (
+                              <div className="flex items-center gap-2 mt-1">
+                                <input
+                                  type="date"
+                                  defaultValue={item.expiration_date || ''}
+                                  onBlur={(e) => handleExpirationUpdate(item.id, e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleExpirationUpdate(item.id, e.currentTarget.value)
+                                    if (e.key === 'Escape') setEditingExpirationId(null)
+                                  }}
+                                  autoFocus
+                                  className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                                <button
+                                  onClick={() => setEditingExpirationId(null)}
+                                  className="text-gray-400 hover:text-gray-600"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <p className={`text-sm ${
+                                  isExpired(item.expiration_date)
+                                    ? 'text-red-600 font-semibold'
+                                    : isExpiringSoon(item.expiration_date)
+                                    ? 'text-orange-600 font-medium'
+                                    : 'text-gray-500'
+                                }`}>
+                                  {item.expiration_date ? (
+                                    <>
+                                      {isExpired(item.expiration_date) ? '⚠️ Expired: ' : ''}
+                                      {isExpiringSoon(item.expiration_date) && !isExpired(item.expiration_date) ? '⏰ Expires: ' : ''}
+                                      {!isExpired(item.expiration_date) && !isExpiringSoon(item.expiration_date) ? 'Expires: ' : ''}
+                                      {formatDate(item.expiration_date)}
+                                    </>
+                                  ) : (
+                                    'No expiration date'
+                                  )}
+                                </p>
+                                <button
+                                  onClick={() => setEditingExpirationId(item.id)}
+                                  className="p-0.5 hover:bg-white/50 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                  title="Edit expiration date"
+                                >
+                                  <svg className="w-3 h-3 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>
