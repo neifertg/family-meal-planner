@@ -44,11 +44,12 @@ export default function BudgetTracker({ familyId }: BudgetTrackerProps) {
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
 
-    // Get all receipt scans for this month with their IDs
+    // Get all receipt scans for this month that have been applied to budget
     const { data: receiptScans } = await supabase
       .from('receipt_scans')
       .select('id')
       .eq('family_id', familyId)
+      .eq('applied_to_budget', true)  // Only count receipts applied to budget
       .gte('purchase_date', firstDayOfMonth.toISOString().split('T')[0])
       .lte('purchase_date', lastDayOfMonth.toISOString().split('T')[0])
 
