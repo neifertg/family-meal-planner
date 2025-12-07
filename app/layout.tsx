@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Family Meal Planner',
-  description: 'Plan your family meals with ease - manage recipes, inventory, and grocery lists',
+  title: 'Kitchen Sync',
+  description: 'Sync your kitchen - manage recipes, inventory, shopping lists, and grocery budgets with AI-powered receipt scanning',
   manifest: '/manifest.json',
   themeColor: '#10b981',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1',

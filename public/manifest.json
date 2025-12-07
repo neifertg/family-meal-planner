@@ -1,7 +1,7 @@
 {
-  "name": "Family Meal Planner",
-  "short_name": "Meal Planner",
-  "description": "Plan meals, manage inventory, and track grocery budgets for your family",
+  "name": "Kitchen Sync",
+  "short_name": "Kitchen Sync",
+  "description": "Sync your kitchen - manage recipes, inventory, shopping lists, and grocery budgets",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
