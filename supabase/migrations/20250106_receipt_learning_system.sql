@@ -52,36 +52,9 @@ CREATE INDEX IF NOT EXISTS idx_receipt_corrections_store_name ON receipt_item_co
 ALTER TABLE receipt_scans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE receipt_item_corrections ENABLE ROW LEVEL SECURITY;
 
--- Users can only access their own family's receipt scans
-CREATE POLICY "receipt_scans_select" ON receipt_scans
-  FOR SELECT USING (
-    family_id IN (
-      SELECT family_id FROM family_members
-      WHERE user_id = auth.uid()
-    )
-  );
+-- Allow authenticated users to access receipt data
+CREATE POLICY "Allow all for authenticated users" ON receipt_scans
+  FOR ALL USING (auth.role() = 'authenticated');
 
-CREATE POLICY "receipt_scans_insert" ON receipt_scans
-  FOR INSERT WITH CHECK (
-    family_id IN (
-      SELECT family_id FROM family_members
-      WHERE user_id = auth.uid()
-    )
-  );
-
--- Users can only access their own family's corrections
-CREATE POLICY "receipt_corrections_select" ON receipt_item_corrections
-  FOR SELECT USING (
-    family_id IN (
-      SELECT family_id FROM family_members
-      WHERE user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "receipt_corrections_insert" ON receipt_item_corrections
-  FOR INSERT WITH CHECK (
-    family_id IN (
-      SELECT family_id FROM family_members
-      WHERE user_id = auth.uid()
-    )
-  );
+CREATE POLICY "Allow all for authenticated users" ON receipt_item_corrections
+  FOR ALL USING (auth.role() = 'authenticated');
