@@ -6,7 +6,7 @@
 
 /**
  * Estimate expiration date for a grocery item based on its category
- * @param category - The food category (produce, dairy, meat, pantry, frozen, other)
+ * @param category - The food category (produce, dairy, meat, pantry, frozen)
  * @param purchaseDate - The date the item was purchased
  * @returns ISO date string for estimated expiration
  */
@@ -23,10 +23,9 @@ export function estimateExpirationDate(
     meat: 4,         // Fresh meat: 4 days (refrigerated)
     pantry: 180,     // Pantry items: 6 months
     frozen: 90,      // Frozen items: 3 months
-    other: 14        // Default: 2 weeks
   }
 
-  const daysToAdd = shelfLifeDays[category || 'other'] || 14
+  const daysToAdd = shelfLifeDays[category || 'pantry'] || 180
 
   const expirationDate = new Date(purchase)
   expirationDate.setDate(expirationDate.getDate() + daysToAdd)
@@ -44,8 +43,7 @@ export function getShelfLifeDescription(category: string | undefined): string {
     meat: '~4 days (refrigerated)',
     pantry: '~6 months',
     frozen: '~3 months',
-    other: '~2 weeks'
   }
 
-  return descriptions[category || 'other'] || '~2 weeks'
+  return descriptions[category || 'pantry'] || '~6 months'
 }
