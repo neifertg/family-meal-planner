@@ -28,6 +28,7 @@ export type ReceiptScanSession = {
   confidence_score: number | null
   tokens_used: number | null
   cost_usd: number | null
+  applied_to_budget?: boolean
 }
 
 /**
@@ -136,7 +137,8 @@ export async function saveReceiptCorrections(
         purchase_date: session.purchase_date,
         confidence_score: session.confidence_score,
         tokens_used: session.tokens_used,
-        cost_usd: session.cost_usd
+        cost_usd: session.cost_usd,
+        applied_to_budget: session.applied_to_budget || false
       })
       .select('id')
       .single()

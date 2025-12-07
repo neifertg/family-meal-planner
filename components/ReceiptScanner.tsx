@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import { ExtractedReceipt, ReceiptItem } from '@/lib/receiptScanner/types'
 import { saveReceiptCorrections } from '@/lib/receiptScanner/learningSystem'
 import { createClient } from '@/lib/supabase/client'
+import { estimateExpirationDate } from '@/lib/receiptScanner/expirationEstimator'
 
 type ReceiptScannerProps = {
-  onReceiptProcessed: (receipt: ExtractedReceipt) => void
+  onReceiptProcessed: (receipt: ExtractedReceipt, applyToBudget: boolean) => void
 }
 
 export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerProps) {
@@ -23,6 +24,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const [costUsd, setCostUsd] = useState<number | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null)
+  const [applyToBudget, setApplyToBudget] = useState(false)
 
   const supabase = createClient()
 
@@ -151,7 +153,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
           purchase_date: extractedReceipt.purchase_date,
           confidence_score: confidence,
           tokens_used: tokensUsed,
-          cost_usd: costUsd
+          cost_usd: costUsd,
+          applied_to_budget: applyToBudget
         },
         originalItems,
         editableItems
@@ -163,8 +166,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       console.warn('No familyId available - skipping learning save')
     }
 
-    console.log('Calling onReceiptProcessed with:', approvedReceipt)
-    onReceiptProcessed(approvedReceipt)
+    console.log('Calling onReceiptProcessed with:', approvedReceipt, 'applyToBudget:', applyToBudget)
+    onReceiptProcessed(approvedReceipt, applyToBudget)
   }
 
   const handleReject = () => {
@@ -440,6 +443,26 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Apply to Budget Checkbox */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={applyToBudget}
+                onChange={(e) => setApplyToBudget(e.target.checked)}
+                className="w-5 h-5 mt-0.5 text-green-600 border-gray-300 rounded focus:ring-2 focus:ring-green-500 cursor-pointer"
+              />
+              <div className="flex-1">
+                <div className="font-semibold text-blue-900 group-hover:text-blue-700 transition-colors">
+                  Apply ${editableItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)} to Monthly Budget
+                </div>
+                <p className="text-sm text-blue-700 mt-1">
+                  Check this to deduct this receipt total from your monthly budget tracker
+                </p>
+              </div>
+            </label>
           </div>
 
           <div className="flex gap-3">

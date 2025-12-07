@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import ReceiptScanner from '@/components/ReceiptScanner'
 import { ExtractedReceipt } from '@/lib/receiptScanner/types'
-import { estimateExpirationDate } from '@/lib/expirationEstimator'
+import { estimateExpirationDate } from '@/lib/receiptScanner/expirationEstimator'
 
 type GroceryItem = {
   id: string
@@ -307,7 +307,7 @@ export default function ShoppingListPage() {
   }
 
   // Handle receipt processing
-  const handleReceiptProcessed = async (receipt: ExtractedReceipt) => {
+  const handleReceiptProcessed = async (receipt: ExtractedReceipt, applyToBudget: boolean) => {
     if (!familyId) return
 
     try {
@@ -329,9 +329,9 @@ export default function ShoppingListPage() {
           }
         }
 
-        // Estimate expiration date based on purchase date
-        const expirationDate = await estimateExpirationDate(
-          receiptItem.name,
+        // Estimate expiration date based on category
+        const expirationDate = estimateExpirationDate(
+          receiptItem.category,
           receipt.purchase_date
         )
 
