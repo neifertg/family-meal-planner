@@ -185,6 +185,23 @@ export default function InventoryPage() {
     if (!familyId) return
 
     try {
+      // Validate purchase_date before processing
+      if (!receipt.purchase_date) {
+        throw new Error('Receipt is missing purchase date')
+      }
+
+      // Validate date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+      if (!dateRegex.test(receipt.purchase_date)) {
+        throw new Error(`Invalid purchase date format: ${receipt.purchase_date}. Expected YYYY-MM-DD`)
+      }
+
+      // Validate it's a valid date
+      const purchaseDate = new Date(receipt.purchase_date)
+      if (isNaN(purchaseDate.getTime())) {
+        throw new Error(`Invalid purchase date: ${receipt.purchase_date}`)
+      }
+
       // Process each receipt item
       for (const receiptItem of receipt.items) {
         // Check if item already exists in inventory
