@@ -13,6 +13,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [extractedReceipt, setExtractedReceipt] = useState<ExtractedReceipt | null>(null)
+  const [editableItems, setEditableItems] = useState<ReceiptItem[]>([])
+  const [showReview, setShowReview] = useState(false)
   const [confidence, setConfidence] = useState<number | null>(null)
   const [tokensUsed, setTokensUsed] = useState<number | null>(null)
   const [costUsd, setCostUsd] = useState<number | null>(null)
@@ -37,6 +39,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     setProcessing(true)
     setProgress(0)
     setExtractedReceipt(null)
+    setShowReview(false)
     setConfidence(null)
     setTokensUsed(null)
     setCostUsd(null)
@@ -70,12 +73,11 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
 
       if (result.success && result.receipt) {
         setExtractedReceipt(result.receipt)
+        setEditableItems([...result.receipt.items])
         setConfidence(result.confidence)
         setTokensUsed(result.tokens_used)
         setCostUsd(result.cost_usd)
-
-        // Pass to parent component
-        onReceiptProcessed(result.receipt)
+        setShowReview(true)
       } else {
         setError(result.error || 'Failed to extract receipt from image')
       }
@@ -89,11 +91,41 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     }
   }
 
+  const handleItemEdit = (index: number, field: keyof ReceiptItem, value: any) => {
+    const updated = [...editableItems]
+    updated[index] = { ...updated[index], [field]: value }
+    setEditableItems(updated)
+  }
+
+  const handleItemRemove = (index: number) => {
+    setEditableItems(editableItems.filter((_, i) => i !== index))
+  }
+
+  const handleApproveAll = () => {
+    if (!extractedReceipt) return
+
+    const approvedReceipt: ExtractedReceipt = {
+      ...extractedReceipt,
+      items: editableItems
+    }
+
+    onReceiptProcessed(approvedReceipt)
+  }
+
+  const handleReject = () => {
+    setShowReview(false)
+    setExtractedReceipt(null)
+    setEditableItems([])
+    handleClear()
+  }
+
   const handleClear = () => {
     setPreviewUrl(null)
     setProgress(0)
     setError(null)
     setExtractedReceipt(null)
+    setEditableItems([])
+    setShowReview(false)
     setConfidence(null)
     setTokensUsed(null)
     setCostUsd(null)
@@ -102,7 +134,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   return (
     <div className="space-y-4">
       {/* Upload Button */}
-      {!previewUrl && (
+      {!previewUrl && !showReview && (
         <div className="border-2 border-dashed border-green-300 rounded-lg p-6 hover:border-green-400 transition-colors">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
@@ -152,7 +184,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       )}
 
       {/* Preview and Progress */}
-      {previewUrl && (
+      {previewUrl && !showReview && (
         <div className="space-y-4">
           {/* Image Preview */}
           <div className="relative rounded-lg overflow-hidden border border-gray-200">
@@ -199,12 +231,96 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
         </div>
       )}
 
-      {/* Success Message */}
-      {extractedReceipt && !processing && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
+      {/* Review Step */}
+      {showReview && extractedReceipt && (
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <p className="font-semibold text-blue-800">Review Receipt Items</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  {extractedReceipt.store_name && `${extractedReceipt.store_name} • `}
+                  {extractedReceipt.purchase_date} • {editableItems.length} items • ${editableItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)} total
+                </p>
+                {confidence && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Confidence: {confidence}%
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-96 overflow-y-auto">
+            {editableItems.map((item, index) => (
+              <div key={index} className="p-3 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 space-y-2">
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) => handleItemEdit(index, 'name', e.target.value)}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Item name"
+                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={item.quantity || ''}
+                        onChange={(e) => handleItemEdit(index, 'quantity', e.target.value)}
+                        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Qty"
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.price}
+                        onChange={(e) => handleItemEdit(index, 'price', parseFloat(e.target.value) || 0)}
+                        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Price"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleItemRemove(index)}
+                    className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                    title="Remove item"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={handleReject}
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleApproveAll}
+              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+            >
+              Approve All ({editableItems.length} items)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Info Box */}
+      {!showReview && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex gap-3">
             <svg
-              className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5"
+              className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -213,84 +329,21 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <div className="flex-1">
-              <p className="font-semibold text-green-800">
-                Successfully extracted receipt!
-              </p>
-              <p className="text-sm text-green-700 mt-1">
-                {extractedReceipt.store_name && `${extractedReceipt.store_name} • `}
-                {extractedReceipt.items.length} items • ${extractedReceipt.total.toFixed(2)} total
-              </p>
-              <div className="flex gap-2 mt-2 text-xs">
-                {confidence && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                    {confidence}% confidence
-                  </span>
-                )}
-                {tokensUsed && (
-                  <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded">
-                    {tokensUsed} tokens
-                  </span>
-                )}
-                {costUsd && (
-                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
-                    ${costUsd.toFixed(4)} cost
-                  </span>
-                )}
-              </div>
-
-              {/* Preview Items */}
-              <div className="mt-3 bg-white border border-green-200 rounded-lg p-3 max-h-48 overflow-y-auto">
-                <p className="text-xs font-semibold text-gray-700 mb-2">Extracted Items:</p>
-                <div className="space-y-1">
-                  {extractedReceipt.items.slice(0, 5).map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-xs">
-                      <span className="text-gray-700">{item.name}</span>
-                      <span className="text-gray-900 font-medium">${item.price.toFixed(2)}</span>
-                    </div>
-                  ))}
-                  {extractedReceipt.items.length > 5 && (
-                    <p className="text-xs text-gray-500 italic">
-                      +{extractedReceipt.items.length - 5} more items
-                    </p>
-                  )}
-                </div>
-              </div>
+            <div className="text-sm text-blue-800">
+              <p className="font-semibold mb-1">Tips for best results:</p>
+              <ul className="list-disc list-inside space-y-1 text-blue-700">
+                <li>Ensure the entire receipt is visible and in focus</li>
+                <li>Good lighting helps - avoid shadows and glare</li>
+                <li>Flatten the receipt if it's crumpled</li>
+                <li>Works with printed or thermal receipts</li>
+              </ul>
             </div>
           </div>
         </div>
       )}
-
-      {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex gap-3">
-          <svg
-            className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <div className="text-sm text-blue-800">
-            <p className="font-semibold mb-1">Tips for best results:</p>
-            <ul className="list-disc list-inside space-y-1 text-blue-700">
-              <li>Ensure the entire receipt is visible and in focus</li>
-              <li>Good lighting helps - avoid shadows and glare</li>
-              <li>Flatten the receipt if it's crumpled</li>
-              <li>Works with printed or thermal receipts</li>
-            </ul>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
