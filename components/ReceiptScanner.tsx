@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ExtractedReceipt, ReceiptItem } from '@/lib/receiptScanner/types'
+import { ExtractedReceipt, ReceiptItem, BoundingBox } from '@/lib/receiptScanner/types'
 import { saveReceiptCorrections } from '@/lib/receiptScanner/learningSystem'
+import { extractTextWithBoundingBoxes, matchSourceTextToBoundingBox, OCRResult } from '@/lib/receiptScanner/ocrExtractor'
 import { createClient } from '@/lib/supabase/client'
+import ReceiptImageWithHighlight from './ReceiptImageWithHighlight'
 
 type ReceiptScannerProps = {
   onReceiptProcessed: (receipt: ExtractedReceipt) => void
@@ -23,6 +25,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const [costUsd, setCostUsd] = useState<number | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null)
+  const [ocrResult, setOcrResult] = useState<OCRResult | null>(null)
+  const [ocrProcessing, setOcrProcessing] = useState(false)
 
   const supabase = createClient()
 
@@ -72,7 +76,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       }
       reader.readAsDataURL(file)
 
-      setProgress(50)
+      setProgress(30)
 
       // Convert image to base64
       const imageReader = new FileReader()
@@ -82,8 +86,14 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       imageReader.readAsDataURL(file)
       const imageData = await imageDataPromise
 
-      // Call API with image data and family context
-      const response = await fetch('/api/scan-receipt', {
+      setProgress(50)
+
+      // Run OCR to get bounding boxes (in parallel with Claude extraction)
+      setOcrProcessing(true)
+      const ocrPromise = extractTextWithBoundingBoxes(imageData)
+
+      // Call Claude API with image data and family context
+      const claudePromise = fetch('/api/scan-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -91,20 +101,41 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
           familyId,
           storeName: null // Will be populated from extracted receipt
         }),
-      })
+      }).then(res => res.json())
 
-      const result = await response.json()
+      setProgress(70)
 
-      if (result.success && result.receipt) {
-        setExtractedReceipt(result.receipt)
-        setOriginalItems([...result.receipt.items]) // Store original for learning
-        setEditableItems([...result.receipt.items])
-        setConfidence(result.confidence)
-        setTokensUsed(result.tokens_used)
-        setCostUsd(result.cost_usd)
+      // Wait for both OCR and Claude to complete
+      const [ocrData, claudeResult] = await Promise.all([ocrPromise, claudePromise])
+
+      setOcrResult(ocrData)
+      setOcrProcessing(false)
+      setProgress(90)
+
+      if (claudeResult.success && claudeResult.receipt) {
+        // Match Claude's extracted items to OCR bounding boxes
+        const itemsWithBoundingBoxes = claudeResult.receipt.items.map((item: ReceiptItem) => {
+          if (item.source_text && ocrData) {
+            const bbox = matchSourceTextToBoundingBox(item.source_text, ocrData)
+            return { ...item, bounding_box: bbox || undefined }
+          }
+          return item
+        })
+
+        const enhancedReceipt = {
+          ...claudeResult.receipt,
+          items: itemsWithBoundingBoxes
+        }
+
+        setExtractedReceipt(enhancedReceipt)
+        setOriginalItems([...itemsWithBoundingBoxes]) // Store original for learning
+        setEditableItems([...itemsWithBoundingBoxes])
+        setConfidence(claudeResult.confidence)
+        setTokensUsed(claudeResult.tokens_used)
+        setCostUsd(claudeResult.cost_usd)
         setShowReview(true)
       } else {
-        setError(result.error || 'Failed to extract receipt from image')
+        setError(claudeResult.error || 'Failed to extract receipt from image')
       }
 
       setProgress(100)
@@ -302,15 +333,15 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
 
           {/* Side-by-side layout: Receipt image + Items */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Receipt Image Preview */}
+            {/* Receipt Image Preview with Highlights */}
             {previewUrl && (
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Receipt Image</h3>
                 <div className="relative">
-                  <img
-                    src={previewUrl}
-                    alt="Receipt"
-                    className="w-full h-auto max-h-[600px] object-contain bg-gray-50 rounded border border-gray-200"
+                  <ReceiptImageWithHighlight
+                    imageUrl={previewUrl}
+                    highlightBox={hoveredItemIndex !== null ? editableItems[hoveredItemIndex]?.bounding_box || null : null}
+                    altText="Receipt"
                   />
                 </div>
               </div>

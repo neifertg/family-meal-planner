@@ -4,6 +4,13 @@
  * Structured schema for AI to extract receipt data
  */
 
+export type BoundingBox = {
+  x: number      // X coordinate (top-left)
+  y: number      // Y coordinate (top-left)
+  width: number  // Width of box
+  height: number // Height of box
+}
+
 export type ReceiptItem = {
   name: string
   quantity?: string        // "2 lb", "1 dozen", "3 cans"
@@ -12,6 +19,7 @@ export type ReceiptItem = {
   category?: string        // Auto-categorized: produce, dairy, meat, etc.
   source_text?: string     // Raw text from receipt that this item came from
   line_number?: number     // Approximate line number on receipt (for visual alignment)
+  bounding_box?: BoundingBox // Coordinates for highlighting on receipt image
 }
 
 export type ExtractedReceipt = {
