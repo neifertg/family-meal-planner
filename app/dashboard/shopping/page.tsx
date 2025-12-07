@@ -411,7 +411,9 @@ export default function ShoppingListPage() {
       const invNormalizedName = extractCoreIngredient(invItem.name)
       const similarity = stringSimilarity(normalizedName, invNormalizedName)
 
-      if (similarity >= 0.75) {
+      // Require exact match or very high similarity (0.95+) to show as "in stock"
+      // This prevents false positives like "chicken breast" matching "chicken"
+      if (similarity >= 0.95) {
         return {
           inStock: true,
           quantityLevel: invItem.quantity_level,
