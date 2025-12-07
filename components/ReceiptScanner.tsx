@@ -18,6 +18,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const [extractedReceipt, setExtractedReceipt] = useState<ExtractedReceipt | null>(null)
   const [originalItems, setOriginalItems] = useState<ReceiptItem[]>([]) // Store original for comparison
   const [editableItems, setEditableItems] = useState<ReceiptItem[]>([])
+  const [editablePurchaseDate, setEditablePurchaseDate] = useState<string>('')
+  const [editableStoreName, setEditableStoreName] = useState<string>('')
   const [showReview, setShowReview] = useState(false)
   const [confidence, setConfidence] = useState<number | null>(null)
   const [tokensUsed, setTokensUsed] = useState<number | null>(null)
@@ -104,6 +106,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
         setExtractedReceipt(claudeResult.receipt)
         setOriginalItems([...claudeResult.receipt.items]) // Store original for learning
         setEditableItems([...claudeResult.receipt.items])
+        setEditablePurchaseDate(claudeResult.receipt.purchase_date || '')
+        setEditableStoreName(claudeResult.receipt.store_name || '')
         setConfidence(claudeResult.confidence)
         setTokensUsed(claudeResult.tokens_used)
         setCostUsd(claudeResult.cost_usd)
@@ -141,7 +145,9 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
 
     const approvedReceipt: ExtractedReceipt = {
       ...extractedReceipt,
-      items: editableItems
+      items: editableItems,
+      purchase_date: editablePurchaseDate,
+      store_name: editableStoreName
     }
 
     // Save corrections for learning if familyId is available (async, don't block user)
@@ -149,8 +155,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       saveReceiptCorrections(
         {
           family_id: familyId,
-          store_name: extractedReceipt.store_name || null,
-          purchase_date: extractedReceipt.purchase_date,
+          store_name: editableStoreName || null,
+          purchase_date: editablePurchaseDate,
           confidence_score: confidence,
           tokens_used: tokensUsed,
           cost_usd: costUsd,
@@ -174,6 +180,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     setShowReview(false)
     setExtractedReceipt(null)
     setEditableItems([])
+    setEditablePurchaseDate('')
+    setEditableStoreName('')
     handleClear()
   }
 
@@ -183,6 +191,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     setError(null)
     setExtractedReceipt(null)
     setEditableItems([])
+    setEditablePurchaseDate('')
+    setEditableStoreName('')
     setShowReview(false)
     setConfidence(null)
     setTokensUsed(null)
@@ -292,27 +302,67 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       {/* Review Step */}
       {showReview && extractedReceipt && (
         <div className="space-y-4">
-          {/* Header Summary */}
+          {/* Header Summary - Editable Store and Date */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="flex-1">
-                <p className="font-semibold text-blue-800">Review Receipt Items</p>
-                <p className="text-sm text-blue-700 mt-1">
-                  {extractedReceipt.store_name && `${extractedReceipt.store_name} • `}
-                  {extractedReceipt.purchase_date} • {editableItems.length} items • ${editableItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)} total
-                </p>
-                {confidence && (
-                  <p className="text-xs text-blue-600 mt-1">
-                    Confidence: {confidence}%
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <p className="font-semibold text-blue-800">Review Receipt Details</p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Edit store name and purchase date if needed
                   </p>
-                )}
-                <p className="text-xs text-gray-600 mt-2">
-                  💡 Each item shows the actual text from the receipt it was extracted from
-                </p>
+                </div>
               </div>
+
+              {/* Editable Store Name and Purchase Date */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="store_name" className="block text-xs font-medium text-blue-800 mb-1">
+                    Store Name
+                  </label>
+                  <input
+                    type="text"
+                    id="store_name"
+                    value={editableStoreName}
+                    onChange={(e) => setEditableStoreName(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    placeholder="Enter store name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="purchase_date" className="block text-xs font-medium text-blue-800 mb-1">
+                    Purchase Date <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    id="purchase_date"
+                    value={editablePurchaseDate}
+                    onChange={(e) => setEditablePurchaseDate(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Summary info */}
+              <div className="flex items-center gap-2 text-sm text-blue-700 pt-2 border-t border-blue-200">
+                <span>{editableItems.length} items</span>
+                <span>•</span>
+                <span>${editableItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)} total</span>
+                {confidence && (
+                  <>
+                    <span>•</span>
+                    <span className="text-xs">Confidence: {confidence}%</span>
+                  </>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-600">
+                💡 Each item below shows the actual text from the receipt it was extracted from
+              </p>
             </div>
           </div>
 
