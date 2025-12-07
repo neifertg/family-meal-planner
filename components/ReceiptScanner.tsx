@@ -1,12 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ExtractedReceipt, ReceiptItem, BoundingBox } from '@/lib/receiptScanner/types'
+import { ExtractedReceipt, ReceiptItem } from '@/lib/receiptScanner/types'
 import { saveReceiptCorrections } from '@/lib/receiptScanner/learningSystem'
-import { extractTextWithBoundingBoxes, matchSourceTextToBoundingBox, OCRResult } from '@/lib/receiptScanner/ocrExtractor'
-import { cropImageSegment } from '@/lib/receiptScanner/imageCropper'
 import { createClient } from '@/lib/supabase/client'
-import ReceiptImageWithHighlight from './ReceiptImageWithHighlight'
 
 type ReceiptScannerProps = {
   onReceiptProcessed: (receipt: ExtractedReceipt) => void
@@ -26,8 +23,6 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const [costUsd, setCostUsd] = useState<number | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null)
-  const [ocrResult, setOcrResult] = useState<OCRResult | null>(null)
-  const [ocrProcessing, setOcrProcessing] = useState(false)
 
   const supabase = createClient()
 
@@ -89,12 +84,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
 
       setProgress(50)
 
-      // Run OCR to get bounding boxes (in parallel with Claude extraction)
-      setOcrProcessing(true)
-      const ocrPromise = extractTextWithBoundingBoxes(imageData)
-
       // Call Claude API with image data and family context
-      const claudePromise = fetch('/api/scan-receipt', {
+      const response = await fetch('/api/scan-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -102,57 +93,15 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
           familyId,
           storeName: null // Will be populated from extracted receipt
         }),
-      }).then(res => res.json())
+      })
 
-      setProgress(70)
-
-      // Wait for both OCR and Claude to complete
-      const [ocrData, claudeResult] = await Promise.all([ocrPromise, claudePromise])
-
-      setOcrResult(ocrData)
-      setOcrProcessing(false)
+      const claudeResult = await response.json()
       setProgress(90)
 
       if (claudeResult.success && claudeResult.receipt) {
-        // Match Claude's extracted items to OCR bounding boxes and crop images
-        const itemsWithBoundingBoxes = claudeResult.receipt.items.map((item: ReceiptItem) => {
-          if (item.source_text && ocrData) {
-            const bbox = matchSourceTextToBoundingBox(item.source_text, ocrData)
-            return { ...item, bounding_box: bbox || undefined }
-          }
-          return item
-        })
-
-        // Generate cropped images for items with bounding boxes
-        console.log('Starting image cropping for', itemsWithBoundingBoxes.length, 'items')
-        const itemsWithCroppedImages = await Promise.all(
-          itemsWithBoundingBoxes.map(async (item, index) => {
-            if (item.bounding_box && imageData) {
-              try {
-                console.log(`Cropping item ${index}: ${item.name}`, item.bounding_box)
-                const croppedImage = await cropImageSegment(imageData, item.bounding_box, 5)
-                console.log(`Successfully cropped item ${index}: ${item.name}`)
-                return { ...item, cropped_image: croppedImage }
-              } catch (error) {
-                console.error('Failed to crop image for item:', item.name, error)
-                return item
-              }
-            } else {
-              console.log(`Skipping item ${index}: ${item.name} - no bounding box`)
-            }
-            return item
-          })
-        )
-        console.log('Finished cropping, items with cropped_image:', itemsWithCroppedImages.filter(i => i.cropped_image).length)
-
-        const enhancedReceipt = {
-          ...claudeResult.receipt,
-          items: itemsWithCroppedImages
-        }
-
-        setExtractedReceipt(enhancedReceipt)
-        setOriginalItems([...itemsWithCroppedImages]) // Store original for learning
-        setEditableItems([...itemsWithCroppedImages])
+        setExtractedReceipt(claudeResult.receipt)
+        setOriginalItems([...claudeResult.receipt.items]) // Store original for learning
+        setEditableItems([...claudeResult.receipt.items])
         setConfidence(claudeResult.confidence)
         setTokensUsed(claudeResult.tokens_used)
         setCostUsd(claudeResult.cost_usd)
@@ -366,15 +315,21 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
 
           {/* Side-by-side layout: Receipt image + Items */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Receipt Image Preview with Highlights */}
+            {/* Receipt Image Preview */}
             {previewUrl && (
               <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Receipt Image</h3>
-                <div className="relative">
-                  <ReceiptImageWithHighlight
-                    imageUrl={previewUrl}
-                    highlightBox={hoveredItemIndex !== null ? editableItems[hoveredItemIndex]?.bounding_box || null : null}
-                    altText="Receipt"
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Receipt Image</h3>
+                <div className="bg-blue-50 border border-blue-200 rounded px-3 py-2 mb-3">
+                  <p className="text-xs text-blue-800">
+                    <span className="font-semibold">💡 Tip:</span> Each item shows a numbered circle and the exact text Claude read from the receipt.
+                    Use this to verify accuracy and correct any mistakes before approving.
+                  </p>
+                </div>
+                <div className="relative inline-block">
+                  <img
+                    src={previewUrl}
+                    alt="Receipt"
+                    className="w-full h-auto max-h-[600px] object-contain border border-gray-300 rounded"
                   />
                 </div>
               </div>
@@ -393,35 +348,29 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                     onMouseEnter={() => setHoveredItemIndex(index)}
                     onMouseLeave={() => setHoveredItemIndex(null)}
                   >
-                    {/* Cropped receipt image showing this item */}
-                    {item.cropped_image ? (
-                      <div className="mb-3">
-                        <div className="text-xs font-medium text-gray-600 mb-1">From receipt:</div>
-                        <img
-                          src={item.cropped_image}
-                          alt={`Receipt segment for ${item.name}`}
-                          className="border border-gray-300 rounded bg-white max-h-16 object-contain"
-                        />
-                      </div>
-                    ) : (
-                      <div className="mb-2 text-xs text-gray-400">
-                        Debug: No cropped image - bbox: {item.bounding_box ? 'yes' : 'no'}, source: {item.source_text ? 'yes' : 'no'}
-                      </div>
-                    )}
-
-                    {/* Source text indicator (fallback if no cropped image) */}
-                    {!item.cropped_image && item.source_text && (
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-600">
-                          Receipt: "{item.source_text}"
-                        </span>
-                        {item.line_number && (
-                          <span className="text-xs text-gray-500">
-                            (Line {item.line_number})
+                    {/* Line number and source text - prominently displayed */}
+                    <div className="mb-3 space-y-1">
+                      {item.line_number && (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white text-sm font-bold rounded-full">
+                            {item.line_number}
                           </span>
-                        )}
-                      </div>
-                    )}
+                          <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                            Receipt Line {item.line_number}
+                          </span>
+                        </div>
+                      )}
+                      {item.source_text && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded px-3 py-2">
+                          <div className="text-xs font-medium text-yellow-800 mb-1">
+                            Claude read from receipt:
+                          </div>
+                          <div className="font-mono text-sm text-gray-900 font-semibold">
+                            "{item.source_text}"
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     <div className="flex items-start gap-2">
                       <div className="flex-1 space-y-2">
