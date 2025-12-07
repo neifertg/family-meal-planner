@@ -14,10 +14,12 @@ Extract the following information:
 - store_location (string): Store address or location if visible
 - purchase_date (string): Date of purchase in YYYY-MM-DD format
 - items (array of objects): Each item with:
-  - name (string): Item name/description
+  - name (string): Item name/description (cleaned up and normalized)
   - quantity (string): Quantity purchased (e.g., "2 lb", "1 dozen", "3 cans")
   - price (number): Item price in dollars
   - unit_price (number): Price per unit if calculable
+  - source_text (string): EXACT text from the receipt for this item (including any codes/abbreviations)
+  - line_number (number): Approximate line number where this item appears on the receipt
 - subtotal (number): Subtotal before tax
 - tax (number): Tax amount
 - total (number): Total amount paid
@@ -31,7 +33,9 @@ IMPORTANT INSTRUCTIONS:
 4. Group items logically - don't split single items across multiple entries
 5. Skip non-grocery items like bags, discounts, or promotional text
 6. Handle multi-line item descriptions correctly
-7. Return ONLY valid JSON - no markdown, no explanations
+7. For source_text: Include the EXACT text as it appears on the receipt (e.g., "CHK BRE 2LB" not "Chicken Breast")
+8. For line_number: Count from top of receipt, starting at 1
+9. Return ONLY valid JSON - no markdown, no explanations
 
 If a field is not found in the receipt, omit it from the JSON (don't use null).`
 
