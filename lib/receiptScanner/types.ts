@@ -10,6 +10,8 @@ export type ReceiptItem = {
   price: number
   unit_price?: number      // Price per unit if calculable
   category?: string        // Auto-categorized: produce, dairy, meat, etc.
+  source_text?: string     // Raw text from receipt that this item came from
+  line_number?: number     // Approximate line number on receipt (for visual alignment)
 }
 
 export type ExtractedReceipt = {

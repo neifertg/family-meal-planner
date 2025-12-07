@@ -22,6 +22,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const [tokensUsed, setTokensUsed] = useState<number | null>(null)
   const [costUsd, setCostUsd] = useState<number | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
+  const [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null)
 
   const supabase = createClient()
 
@@ -275,6 +276,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       {/* Review Step */}
       {showReview && extractedReceipt && (
         <div className="space-y-4">
+          {/* Header Summary */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -291,52 +293,97 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                     Confidence: {confidence}%
                   </p>
                 )}
+                <p className="text-xs text-gray-600 mt-2">
+                  💡 Hover over an item to see where it came from on the receipt
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-96 overflow-y-auto">
-            {editableItems.map((item, index) => (
-              <div key={index} className="p-3 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start gap-2">
-                  <div className="flex-1 space-y-2">
-                    <input
-                      type="text"
-                      value={item.name}
-                      onChange={(e) => handleItemEdit(index, 'name', e.target.value)}
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="Item name"
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={item.quantity || ''}
-                        onChange={(e) => handleItemEdit(index, 'quantity', e.target.value)}
-                        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                        placeholder="Qty"
-                      />
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.price}
-                        onChange={(e) => handleItemEdit(index, 'price', parseFloat(e.target.value) || 0)}
-                        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                        placeholder="Price"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleItemRemove(index)}
-                    className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                    title="Remove item"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+          {/* Side-by-side layout: Receipt image + Items */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Receipt Image Preview */}
+            {previewUrl && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Receipt Image</h3>
+                <div className="relative">
+                  <img
+                    src={previewUrl}
+                    alt="Receipt"
+                    className="w-full h-auto max-h-[600px] object-contain bg-gray-50 rounded border border-gray-200"
+                  />
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Extracted Items List */}
+            <div className="bg-white border border-gray-200 rounded-lg">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700">Extracted Items</h3>
+              </div>
+              <div className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
+                {editableItems.map((item, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 transition-all ${hoveredItemIndex === index ? 'bg-blue-50 border-l-4 border-blue-500' : 'hover:bg-gray-50'}`}
+                    onMouseEnter={() => setHoveredItemIndex(index)}
+                    onMouseLeave={() => setHoveredItemIndex(null)}
+                  >
+                    {/* Source text indicator */}
+                    {item.source_text && (
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-600">
+                          Receipt: "{item.source_text}"
+                        </span>
+                        {item.line_number && (
+                          <span className="text-xs text-gray-500">
+                            (Line {item.line_number})
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => handleItemEdit(index, 'name', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="Item name"
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={item.quantity || ''}
+                            onChange={(e) => handleItemEdit(index, 'quantity', e.target.value)}
+                            className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Qty"
+                          />
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={item.price}
+                            onChange={(e) => handleItemEdit(index, 'price', parseFloat(e.target.value) || 0)}
+                            className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Price"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleItemRemove(index)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Remove item"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-3">
