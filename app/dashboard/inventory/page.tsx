@@ -210,7 +210,7 @@ export default function InventoryPage() {
             .eq('id', existingItem.id)
         } else {
           // Add new item
-          await supabase
+          const { error: insertError } = await supabase
             .from('inventory_items')
             .insert({
               family_id: familyId,
@@ -220,6 +220,11 @@ export default function InventoryPage() {
               purchase_date: receipt.purchase_date,
               expiration_date: expirationDate
             })
+
+          if (insertError) {
+            console.error('Error inserting inventory item:', insertError)
+            throw insertError
+          }
         }
 
         // Record price if available
@@ -242,9 +247,10 @@ export default function InventoryPage() {
 
       alert(`✅ Receipt processed! Updated ${receipt.items.length} items in inventory.`)
       setShowReceiptScanner(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing receipt:', error)
-      alert('Failed to process receipt. Please try again.')
+      const errorMessage = error?.message || error?.error_description || 'Unknown error'
+      alert(`Failed to process receipt: ${errorMessage}\n\nCheck console for details.`)
     }
   }
 
