@@ -38,9 +38,9 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     const { data } = await supabase
       .from('family_members')
       .select('family_id')
-      .single()
+      .limit(1)
 
-    if (data) setFamilyId(data.family_id)
+    if (data && data.length > 0) setFamilyId(data[0].family_id)
   }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

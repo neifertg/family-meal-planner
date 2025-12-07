@@ -25,21 +25,25 @@ export default function ReceiptsPage() {
   }, [familyId, selectedMonth])
 
   const loadFamily = async () => {
-    // Get family_id from family_members
-    const { data: memberData } = await supabase
+    // Get family_id from family_members (take first one)
+    const { data: memberData, error: memberError } = await supabase
       .from('family_members')
       .select('family_id')
-      .single()
+      .limit(1)
 
-    if (memberData?.family_id) {
-      setFamilyId(memberData.family_id)
+    console.log('Member data:', memberData, 'Error:', memberError)
+
+    if (memberData && memberData.length > 0 && memberData[0]?.family_id) {
+      setFamilyId(memberData[0].family_id)
 
       // Get family budget
-      const { data: familyData } = await supabase
+      const { data: familyData, error: familyError } = await supabase
         .from('families')
         .select('monthly_budget')
-        .eq('id', memberData.family_id)
+        .eq('id', memberData[0].family_id)
         .single()
+
+      console.log('Family data:', familyData, 'Error:', familyError)
 
       if (familyData) {
         setMonthlyBudget(familyData.monthly_budget || null)
@@ -48,15 +52,21 @@ export default function ReceiptsPage() {
   }
 
   const loadBudgetData = async () => {
-    if (!familyId) return
+    if (!familyId) {
+      console.log('No familyId, skipping loadBudgetData')
+      return
+    }
 
+    console.log('Loading budget data for familyId:', familyId)
     setLoading(true)
 
     const firstDayOfMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1)
     const lastDayOfMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0)
 
+    console.log('Date range:', firstDayOfMonth.toISOString().split('T')[0], 'to', lastDayOfMonth.toISOString().split('T')[0])
+
     // Get all receipt scans for this month that have been applied to budget
-    const { data: receiptScans } = await supabase
+    const { data: receiptScans, error: scansError } = await supabase
       .from('receipt_scans')
       .select(`
         id,
@@ -72,15 +82,19 @@ export default function ReceiptsPage() {
       .lte('purchase_date', lastDayOfMonth.toISOString().split('T')[0])
       .order('purchase_date', { ascending: false })
 
+    console.log('Receipt scans:', receiptScans, 'Error:', scansError)
+
     if (receiptScans) {
       // For each receipt, get the items and calculate total
       const receiptsWithTotals = await Promise.all(
         receiptScans.map(async (receipt) => {
-          const { data: items } = await supabase
+          const { data: items, error: itemsError } = await supabase
             .from('receipt_item_corrections')
             .select('corrected_name, corrected_price, corrected_quantity')
             .eq('receipt_scan_id', receipt.id)
             .eq('was_removed', false)
+
+          console.log(`Items for receipt ${receipt.id}:`, items, 'Error:', itemsError)
 
           const total = items?.reduce((sum, item) => sum + (item.corrected_price || 0), 0) || 0
 
@@ -91,6 +105,8 @@ export default function ReceiptsPage() {
           }
         })
       )
+
+      console.log('Receipts with totals:', receiptsWithTotals)
 
       setReceipts(receiptsWithTotals)
       const monthTotal = receiptsWithTotals.reduce((sum, r) => sum + r.total, 0)
