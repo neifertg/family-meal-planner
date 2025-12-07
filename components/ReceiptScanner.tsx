@@ -331,7 +331,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                     alt="Receipt"
                     className="w-full h-auto max-h-[600px] object-contain border border-gray-300 rounded"
                   />
-                  {/* Overlay line number markers */}
+                  {/* Overlay line number markers - only show on hover */}
                   <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
                     {editableItems.map((item, index) => {
                       if (!item.line_number) return null
@@ -342,21 +342,16 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                         : (item.line_number * 2) + '%'
                       const isHovered = hoveredItemIndex === index
 
+                      // Only render if this item is currently hovered
+                      if (!isHovered) return null
+
                       return (
                         <div
                           key={index}
-                          className={`absolute left-2 transition-all duration-200 ${
-                            isHovered
-                              ? 'scale-125 z-10'
-                              : 'opacity-70 hover:opacity-100'
-                          }`}
+                          className="absolute left-2 transition-all duration-200 z-10 animate-in fade-in zoom-in"
                           style={{ top: topPercent }}
                         >
-                          <div className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs shadow-lg ${
-                            isHovered
-                              ? 'bg-yellow-400 text-gray-900 ring-4 ring-yellow-300'
-                              : 'bg-blue-600 text-white'
-                          }`}>
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm shadow-lg bg-yellow-400 text-gray-900 ring-4 ring-yellow-300 border-2 border-gray-900">
                             {item.line_number}
                           </div>
                         </div>
