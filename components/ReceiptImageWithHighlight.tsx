@@ -54,13 +54,28 @@ export default function ReceiptImageWithHighlight({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    // Get actual displayed dimensions
+    const displayWidth = img.clientWidth
+    const displayHeight = img.clientHeight
+
+    // Set canvas size to match displayed image
+    canvas.width = displayWidth
+    canvas.height = displayHeight
+
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
     // If there's a highlight box, draw it
     if (highlightBox && imageDimensions.width > 0 && imageDimensions.height > 0) {
-      const scaleX = canvas.width / imageDimensions.width
-      const scaleY = canvas.height / imageDimensions.height
+      console.log('Drawing highlight:', {
+        highlightBox,
+        imageDimensions,
+        displayWidth,
+        displayHeight
+      })
+
+      const scaleX = displayWidth / imageDimensions.width
+      const scaleY = displayHeight / imageDimensions.height
 
       // Scale bounding box to canvas size
       const scaledBox = {
@@ -70,13 +85,15 @@ export default function ReceiptImageWithHighlight({
         height: highlightBox.height * scaleY
       }
 
+      console.log('Scaled box:', scaledBox)
+
       // Draw yellow highlight with transparency
-      ctx.fillStyle = 'rgba(255, 255, 0, 0.3)'
+      ctx.fillStyle = 'rgba(255, 255, 0, 0.5)'
       ctx.fillRect(scaledBox.x, scaledBox.y, scaledBox.width, scaledBox.height)
 
       // Draw border
-      ctx.strokeStyle = 'rgba(255, 200, 0, 0.8)'
-      ctx.lineWidth = 2
+      ctx.strokeStyle = 'rgba(255, 200, 0, 1)'
+      ctx.lineWidth = 3
       ctx.strokeRect(scaledBox.x, scaledBox.y, scaledBox.width, scaledBox.height)
     }
   }, [highlightBox, imageDimensions])
@@ -94,13 +111,7 @@ export default function ReceiptImageWithHighlight({
       {/* Canvas Overlay for Highlights */}
       <canvas
         ref={canvasRef}
-        width={imageDimensions.width}
-        height={imageDimensions.height}
         className="absolute top-0 left-0 w-full h-full pointer-events-none"
-        style={{
-          maxHeight: '600px',
-          objectFit: 'contain'
-        }}
       />
     </div>
   )

@@ -158,30 +158,40 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   }
 
   const handleApproveAll = async () => {
-    if (!extractedReceipt || !familyId) return
+    console.log('Approve button clicked', { extractedReceipt, familyId, editableItems })
+
+    if (!extractedReceipt) {
+      console.error('No extracted receipt')
+      return
+    }
 
     const approvedReceipt: ExtractedReceipt = {
       ...extractedReceipt,
       items: editableItems
     }
 
-    // Save corrections for learning (async, don't block user)
-    saveReceiptCorrections(
-      {
-        family_id: familyId,
-        store_name: extractedReceipt.store_name || null,
-        purchase_date: extractedReceipt.purchase_date,
-        confidence_score: confidence,
-        tokens_used: tokensUsed,
-        cost_usd: costUsd
-      },
-      originalItems,
-      editableItems
-    ).catch(err => {
-      console.error('Failed to save corrections for learning:', err)
-      // Don't fail the user's workflow if learning save fails
-    })
+    // Save corrections for learning if familyId is available (async, don't block user)
+    if (familyId) {
+      saveReceiptCorrections(
+        {
+          family_id: familyId,
+          store_name: extractedReceipt.store_name || null,
+          purchase_date: extractedReceipt.purchase_date,
+          confidence_score: confidence,
+          tokens_used: tokensUsed,
+          cost_usd: costUsd
+        },
+        originalItems,
+        editableItems
+      ).catch(err => {
+        console.error('Failed to save corrections for learning:', err)
+        // Don't fail the user's workflow if learning save fails
+      })
+    } else {
+      console.warn('No familyId available - skipping learning save')
+    }
 
+    console.log('Calling onReceiptProcessed with:', approvedReceipt)
     onReceiptProcessed(approvedReceipt)
   }
 
