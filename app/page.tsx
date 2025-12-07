@@ -44,10 +44,10 @@ export default async function HomePage() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            Family Meal Planner
+            Kitchen Sync
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Plan your family meals with ease. Manage recipes, track inventory, stay in budget, and shop smart.
+            Sync your kitchen. Manage recipes, track inventory with AI receipt scanning, stay on budget, and shop smart.
           </p>
         </div>
 
