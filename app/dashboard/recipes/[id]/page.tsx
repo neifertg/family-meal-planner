@@ -40,6 +40,8 @@ export default function RecipeDetailPage() {
   const [editCuisine, setEditCuisine] = useState('')
   const [editCategory, setEditCategory] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
+  const [editImageFile, setEditImageFile] = useState<File | null>(null)
+  const [editImageUploadMode, setEditImageUploadMode] = useState<'url' | 'upload'>('url')
   const [editIngredientsText, setEditIngredientsText] = useState('')
   const [editInstructionsText, setEditInstructionsText] = useState('')
 
@@ -131,6 +133,28 @@ export default function RecipeDetailPage() {
         .map(line => line.trim().replace(/^\d+\.\s*/, ''))
         .filter(line => line.length > 0)
 
+      // Upload image if file is provided
+      let uploadedImageUrl = editImageUrl
+      if (editImageFile) {
+        const fileExt = editImageFile.name.split('.').pop()
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`
+        const filePath = `recipe-images/${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('recipe-images')
+          .upload(filePath, editImageFile)
+
+        if (uploadError) {
+          throw new Error(`Image upload failed: ${uploadError.message}`)
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('recipe-images')
+          .getPublicUrl(filePath)
+
+        uploadedImageUrl = publicUrl
+      }
+
       const updateData = {
         name: editName.trim(),
         description: editDescription.trim() || null,
@@ -142,7 +166,7 @@ export default function RecipeDetailPage() {
         servings: editServings ? parseInt(editServings) : null,
         cuisine: editCuisine.trim() || null,
         category: editCategory.trim() || null,
-        image_url: editImageUrl.trim() || null,
+        image_url: uploadedImageUrl || null,
         ingredients,
         instructions,
       }
@@ -237,16 +261,78 @@ export default function RecipeDetailPage() {
               </div>
 
               <div>
-                <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700 mb-1">
-                  Image URL
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Recipe Image
                 </label>
-                <input
-                  type="url"
-                  id="imageUrl"
-                  value={editImageUrl}
-                  onChange={(e) => setEditImageUrl(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
-                />
+
+                {/* Tab buttons */}
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditImageUploadMode('url')}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                      editImageUploadMode === 'url'
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Image URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditImageUploadMode('upload')}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                      editImageUploadMode === 'upload'
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Upload Image
+                  </button>
+                </div>
+
+                {/* URL input */}
+                {editImageUploadMode === 'url' && (
+                  <input
+                    type="url"
+                    id="imageUrl"
+                    value={editImageUrl}
+                    onChange={(e) => {
+                      setEditImageUrl(e.target.value)
+                      setEditImageFile(null)
+                    }}
+                    placeholder="https://example.com/image.jpg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                  />
+                )}
+
+                {/* File upload */}
+                {editImageUploadMode === 'upload' && (
+                  <div className="space-y-2">
+                    <input
+                      type="file"
+                      id="imageFile"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          setEditImageFile(file)
+                          setEditImageUrl('')
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100"
+                    />
+                    {editImageFile && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>{editImageFile.name}</span>
+                        <span className="text-gray-400">({(editImageFile.size / 1024).toFixed(1)} KB)</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
