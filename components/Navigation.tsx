@@ -30,7 +30,7 @@ export default function Navigation() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link href="/dashboard" className="text-xl font-bold text-indigo-600">
-              Family Meal Planner
+              Kitchen Sync
             </Link>
 
             {/* Desktop Navigation */}

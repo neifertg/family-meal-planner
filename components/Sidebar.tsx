@@ -80,7 +80,7 @@ export default function Sidebar() {
       <div className="lg:hidden bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="flex items-center justify-between px-4 h-16">
           <Link href="/dashboard" className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Family Meal Planner
+            Kitchen Sync
           </Link>
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -135,7 +135,7 @@ export default function Sidebar() {
         {/* Sidebar Header */}
         <div className="flex items-center h-16 px-6 border-b border-gray-200">
           <Link href="/dashboard" className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Family Meal Planner
+            Kitchen Sync
           </Link>
         </div>
 
