@@ -68,7 +68,7 @@ export default function SignUpPage() {
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
-            Join Family Meal Planner
+            Join Kitchen Sync
           </h1>
           <p className="text-gray-600">Start organizing your family meals today</p>
         </div>
