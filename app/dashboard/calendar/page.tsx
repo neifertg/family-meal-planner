@@ -104,7 +104,11 @@ export default function CalendarPage() {
     for (let i = 0; i < 7; i++) {
       const date = new Date(weekStart)
       date.setDate(date.getDate() + i)
-      const dateStr = date.toISOString().split('T')[0]
+      // Use local date string to avoid timezone issues
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
 
       days.push({
         date: dateStr,
@@ -118,6 +122,14 @@ export default function CalendarPage() {
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekEnd.getDate() + 6)
 
+    // Format dates as local date strings to avoid timezone issues
+    const formatLocalDate = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
     const { data: mealPlans } = await supabase
       .from('meal_plans')
       .select(`
@@ -130,8 +142,8 @@ export default function CalendarPage() {
           cook_time_minutes
         )
       `)
-      .gte('planned_date', weekStart.toISOString().split('T')[0])
-      .lte('planned_date', weekEnd.toISOString().split('T')[0])
+      .gte('planned_date', formatLocalDate(weekStart))
+      .lte('planned_date', formatLocalDate(weekEnd))
       .order('planned_date')
 
     // Organize meal plans by date and meal type
@@ -403,8 +415,14 @@ export default function CalendarPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
           {weekDays.map((day) => {
-            const dayDate = new Date(day.date + 'T12:00:00')
-            const isToday = day.date === new Date().toISOString().split('T')[0]
+            // Parse the date string to create a local date
+            const [year, month, dayNum] = day.date.split('-').map(Number)
+            const dayDate = new Date(year, month - 1, dayNum)
+
+            // Get today's date in local format
+            const today = new Date()
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+            const isToday = day.date === todayStr
 
             return (
               <div
