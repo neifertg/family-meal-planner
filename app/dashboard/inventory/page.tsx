@@ -53,7 +53,8 @@ export default function InventoryPage() {
     const { data: families } = await supabase
       .from('families')
       .select('id')
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (families) {
       setFamilyId(families.id)
