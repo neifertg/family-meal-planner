@@ -25,6 +25,8 @@ export default function NewRecipePage() {
   const [cuisine, setCuisine] = useState('')
   const [category, setCategory] = useState('')
   const [imageUrl, setImageUrl] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageUploadMode, setImageUploadMode] = useState<'url' | 'upload'>('url')
   const [estimatedCost, setEstimatedCost] = useState('')
   const [ingredientsText, setIngredientsText] = useState('')
   const [instructionsText, setInstructionsText] = useState('')
@@ -134,6 +136,28 @@ export default function NewRecipePage() {
       const servingCount = servings ? parseInt(servings) : null
       const costPerServing = (totalCost && servingCount) ? totalCost / servingCount : null
 
+      // Upload image if file is provided
+      let uploadedImageUrl = imageUrl
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop()
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`
+        const filePath = `recipe-images/${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('recipe-images')
+          .upload(filePath, imageFile)
+
+        if (uploadError) {
+          throw new Error(`Image upload failed: ${uploadError.message}`)
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('recipe-images')
+          .getPublicUrl(filePath)
+
+        uploadedImageUrl = publicUrl
+      }
+
       // Create recipe - ensure all string fields are safely trimmed
       const recipeData = {
         family_id: familyId,
@@ -147,7 +171,7 @@ export default function NewRecipePage() {
         servings: servingCount,
         cuisine: (cuisine || '').trim() || null,
         category: (category || '').trim() || null,
-        image_url: (imageUrl || '').trim() || null,
+        image_url: uploadedImageUrl || null,
         estimated_cost_usd: totalCost,
         cost_per_serving_usd: costPerServing,
         ingredients,
@@ -296,17 +320,78 @@ export default function NewRecipePage() {
             </div>
 
             <div>
-              <label htmlFor="imageUrl" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Image URL
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Recipe Image
               </label>
-              <input
-                type="url"
-                id="imageUrl"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://example.com/image.jpg"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
-              />
+
+              {/* Tab buttons */}
+              <div className="flex gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setImageUploadMode('url')}
+                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                    imageUploadMode === 'url'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Image URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageUploadMode('upload')}
+                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                    imageUploadMode === 'upload'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Upload Image
+                </button>
+              </div>
+
+              {/* URL input */}
+              {imageUploadMode === 'url' && (
+                <input
+                  type="url"
+                  id="imageUrl"
+                  value={imageUrl}
+                  onChange={(e) => {
+                    setImageUrl(e.target.value)
+                    setImageFile(null)
+                  }}
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                />
+              )}
+
+              {/* File upload */}
+              {imageUploadMode === 'upload' && (
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    id="imageFile"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        setImageFile(file)
+                        setImageUrl('')
+                      }
+                    }}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                  />
+                  {imageFile && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>{imageFile.name}</span>
+                      <span className="text-gray-400">({(imageFile.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
