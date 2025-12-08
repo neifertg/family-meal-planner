@@ -59,7 +59,8 @@ export default function ShoppingListPage() {
     const { data: families, error } = await supabase
       .from('families')
       .select('id')
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     console.log('Family data loaded:', families, 'Error:', error)
 

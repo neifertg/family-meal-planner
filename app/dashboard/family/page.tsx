@@ -51,7 +51,8 @@ export default function FamilyPage() {
     const { data: family, error: familyError } = await supabase
       .from('families')
       .select('id')
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (familyError) {
       console.error('Error loading family:', familyError)
@@ -145,7 +146,8 @@ export default function FamilyPage() {
     const { data: family, error: familyError } = await supabase
       .from('families')
       .select('id')
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (familyError) {
       console.error('Error loading family:', familyError)

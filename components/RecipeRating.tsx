@@ -43,7 +43,8 @@ export default function RecipeRating({ recipeId, recipeName }: RecipeRatingProps
     const { data: family, error: familyError } = await supabase
       .from('families')
       .select('id')
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (familyError) {
       console.error('Error loading family:', familyError)

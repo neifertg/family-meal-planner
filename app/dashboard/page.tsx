@@ -13,7 +13,8 @@ export default async function DashboardPage() {
   const { data: family } = await supabase
     .from('families')
     .select('*')
-    .single() as any
+    .limit(1)
+    .maybeSingle() as any
 
   // Get counts for dashboard stats
   const { count: recipeCount } = await supabase
