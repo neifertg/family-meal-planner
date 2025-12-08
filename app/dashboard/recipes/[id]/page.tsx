@@ -42,6 +42,8 @@ export default function RecipeDetailPage() {
   const [editImageUrl, setEditImageUrl] = useState('')
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [editImageUploadMode, setEditImageUploadMode] = useState<'url' | 'upload'>('url')
+  const [editOwner, setEditOwner] = useState('')
+  const [editUploadedBy, setEditUploadedBy] = useState('')
   const [editIngredientsText, setEditIngredientsText] = useState('')
   const [editInstructionsText, setEditInstructionsText] = useState('')
 
@@ -101,6 +103,8 @@ export default function RecipeDetailPage() {
     setEditCuisine(recipe.cuisine || '')
     setEditCategory(recipe.category || '')
     setEditImageUrl(recipe.image_url || '')
+    setEditOwner(recipe.owner || '')
+    setEditUploadedBy(recipe.uploaded_by || '')
     setEditIngredientsText(recipe.ingredients.join('\n'))
     setEditInstructionsText(recipe.instructions.join('\n'))
     setEditing(true)
@@ -167,6 +171,8 @@ export default function RecipeDetailPage() {
         cuisine: editCuisine.trim() || null,
         category: editCategory.trim() || null,
         image_url: uploadedImageUrl || null,
+        owner: (editOwner || '').trim() || null,
+        uploaded_by: (editUploadedBy || '').trim() || null,
         ingredients,
         instructions,
       }
@@ -412,6 +418,38 @@ export default function RecipeDetailPage() {
                   <option value="Side Dish">Side Dish</option>
                   <option value="Beverage">Beverage</option>
                 </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="editOwner" className="block text-sm font-medium text-gray-700 mb-1">
+                    Recipe Owner
+                  </label>
+                  <input
+                    type="text"
+                    id="editOwner"
+                    value={editOwner}
+                    onChange={(e) => setEditOwner(e.target.value)}
+                    placeholder="e.g., Grandma, Mom"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Who owns or created this recipe (optional)</p>
+                </div>
+
+                <div>
+                  <label htmlFor="editUploadedBy" className="block text-sm font-medium text-gray-700 mb-1">
+                    Uploaded By
+                  </label>
+                  <input
+                    type="text"
+                    id="editUploadedBy"
+                    value={editUploadedBy}
+                    onChange={(e) => setEditUploadedBy(e.target.value)}
+                    placeholder="e.g., Your name"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Who added this recipe to the app (optional)</p>
+                </div>
               </div>
             </div>
 
