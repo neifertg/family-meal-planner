@@ -165,35 +165,61 @@ export default function ShoppingListPage() {
         .eq('family_id', familyId)
         .not('recipe_id', 'is', null)
 
-      // Aggregate ingredients from all recipes with smart consolidation
+      // Aggregate ingredients from all recipes and adhoc meals with smart consolidation
       const ingredientMap = new Map<string, { quantities: string[]; recipeIds: Set<string> }>()
 
       mealPlans.forEach((plan: any) => {
+        // Handle recipe-based meals
         const recipe = plan.recipes
-        if (!recipe || !recipe.ingredients) return
+        if (recipe && recipe.ingredients) {
+          const ingredients = Array.isArray(recipe.ingredients)
+            ? recipe.ingredients
+            : recipe.ingredients.ingredients || []
 
-        const ingredients = Array.isArray(recipe.ingredients)
-          ? recipe.ingredients
-          : recipe.ingredients.ingredients || []
+          ingredients.forEach((ingredient: string) => {
+            const parsed = parseIngredient(ingredient)
+            const existingKeys = Array.from(ingredientMap.keys())
 
-        ingredients.forEach((ingredient: string) => {
-          const parsed = parseIngredient(ingredient)
-          const existingKeys = Array.from(ingredientMap.keys())
+            // Use fuzzy matching to find similar ingredients
+            const itemKey = findOrCreateIngredientKey(parsed.item, existingKeys)
 
-          // Use fuzzy matching to find similar ingredients
-          const itemKey = findOrCreateIngredientKey(parsed.item, existingKeys)
+            if (ingredientMap.has(itemKey)) {
+              const existing = ingredientMap.get(itemKey)!
+              existing.quantities.push(parsed.fullText)
+              existing.recipeIds.add(recipe.id)
+            } else {
+              ingredientMap.set(itemKey, {
+                quantities: [parsed.fullText],
+                recipeIds: new Set([recipe.id])
+              })
+            }
+          })
+        }
 
-          if (ingredientMap.has(itemKey)) {
-            const existing = ingredientMap.get(itemKey)!
-            existing.quantities.push(parsed.fullText)
-            existing.recipeIds.add(recipe.id)
-          } else {
-            ingredientMap.set(itemKey, {
-              quantities: [parsed.fullText],
-              recipeIds: new Set([recipe.id])
-            })
-          }
-        })
+        // Handle adhoc meal ingredients
+        if (plan.adhoc_meal_name && plan.adhoc_ingredients) {
+          const adhocIngredients = Array.isArray(plan.adhoc_ingredients) ? plan.adhoc_ingredients : []
+
+          adhocIngredients.forEach((ingredient: string) => {
+            const parsed = parseIngredient(ingredient)
+            const existingKeys = Array.from(ingredientMap.keys())
+
+            // Use fuzzy matching to find similar ingredients
+            const itemKey = findOrCreateIngredientKey(parsed.item, existingKeys)
+
+            if (ingredientMap.has(itemKey)) {
+              const existing = ingredientMap.get(itemKey)!
+              existing.quantities.push(parsed.fullText)
+              // Use a special ID for adhoc meals
+              existing.recipeIds.add(`adhoc-${plan.id}`)
+            } else {
+              ingredientMap.set(itemKey, {
+                quantities: [parsed.fullText],
+                recipeIds: new Set([`adhoc-${plan.id}`])
+              })
+            }
+          })
+        }
       })
 
       console.log('Aggregated ingredients:', ingredientMap)
