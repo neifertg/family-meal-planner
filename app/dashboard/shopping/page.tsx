@@ -14,6 +14,8 @@ type GroceryItem = {
   category: string | null
   is_checked: boolean
   recipe_id: string | null
+  recipe_name?: string | null
+  adhoc_meal_name?: string | null
 }
 
 type InventoryItem = {
@@ -95,7 +97,45 @@ export default function ShoppingListPage() {
       console.error('Error loading shopping list:', error)
     }
 
-    if (data) setItems(data)
+    if (data) {
+      // Enrich items with recipe/meal names
+      const enrichedItems = await Promise.all(
+        data.map(async (item) => {
+          if (!item.recipe_id) {
+            return item
+          }
+
+          // Check if it's an adhoc meal (format: "adhoc-{meal_plan_id}")
+          if (item.recipe_id.startsWith('adhoc-')) {
+            const mealPlanId = item.recipe_id.replace('adhoc-', '')
+            const { data: mealPlan } = await supabase
+              .from('meal_plans')
+              .select('adhoc_meal_name')
+              .eq('id', mealPlanId)
+              .single()
+
+            return {
+              ...item,
+              adhoc_meal_name: mealPlan?.adhoc_meal_name || null
+            }
+          } else {
+            // It's a recipe
+            const { data: recipe } = await supabase
+              .from('recipes')
+              .select('name')
+              .eq('id', item.recipe_id)
+              .single()
+
+            return {
+              ...item,
+              recipe_name: recipe?.name || null
+            }
+          }
+        })
+      )
+
+      setItems(enrichedItems)
+    }
     setLoading(false)
   }
 
@@ -683,6 +723,11 @@ export default function ShoppingListPage() {
                                     : 'bg-orange-100 text-orange-700 border border-orange-200'
                                 }`}>
                                   ✓ In Stock{item.inventoryStatus.quantityLevel === 'low' ? ' (Low)' : ''}
+                                </span>
+                              )}
+                              {(item.recipe_name || item.adhoc_meal_name) && (
+                                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                                  {item.recipe_name || item.adhoc_meal_name}
                                 </span>
                               )}
                             </div>
