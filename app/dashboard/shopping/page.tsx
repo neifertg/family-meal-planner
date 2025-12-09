@@ -42,6 +42,9 @@ export default function ShoppingListPage() {
   const [generating, setGenerating] = useState(false)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [showReceiptScanner, setShowReceiptScanner] = useState(false)
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editQuantity, setEditQuantity] = useState('')
   const supabase = createClient()
 
   useEffect(() => {
@@ -307,6 +310,35 @@ export default function ShoppingListPage() {
       .eq('id', id)
 
     if (!error) loadShoppingList()
+  }
+
+  const startEditing = (item: GroceryItem) => {
+    setEditingItemId(item.id)
+    setEditName(item.name)
+    setEditQuantity(item.quantity || '')
+  }
+
+  const cancelEditing = () => {
+    setEditingItemId(null)
+    setEditName('')
+    setEditQuantity('')
+  }
+
+  const saveEdit = async () => {
+    if (!editingItemId || !editName.trim()) return
+
+    const { error } = await supabase
+      .from('grocery_list_items')
+      .update({
+        name: editName.trim(),
+        quantity: editQuantity.trim() || null
+      })
+      .eq('id', editingItemId)
+
+    if (!error) {
+      loadShoppingList()
+      cancelEditing()
+    }
   }
 
   const clearCompleted = async () => {
@@ -579,49 +611,107 @@ export default function ShoppingListPage() {
                         item.is_checked ? 'bg-gray-50' : 'bg-emerald-50'
                       }`}
                     >
-                      <button
-                        onClick={() => toggleItem(item.id, item.is_checked)}
-                        className="mt-0.5"
-                      >
-                        {item.is_checked ? (
-                          <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5 text-gray-300 hover:text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        )}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className={`text-sm font-medium ${item.is_checked ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                            {item.name}
+                      {editingItemId === item.id ? (
+                        // Edit mode
+                        <>
+                          <div className="flex-1 space-y-2">
+                            <input
+                              type="text"
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              placeholder="Item name"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                              autoFocus
+                            />
+                            <input
+                              type="text"
+                              value={editQuantity}
+                              onChange={(e) => setEditQuantity(e.target.value)}
+                              placeholder="Quantity (optional)"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                            />
                           </div>
-                          {item.inventoryStatus?.inStock && (
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              item.inventoryStatus.quantityLevel === 'full'
-                                ? 'bg-green-100 text-green-700 border border-green-200'
-                                : item.inventoryStatus.quantityLevel === 'medium'
-                                ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                                : 'bg-orange-100 text-orange-700 border border-orange-200'
-                            }`}>
-                              ✓ In Stock{item.inventoryStatus.quantityLevel === 'low' ? ' (Low)' : ''}
-                            </span>
-                          )}
-                        </div>
-                        {item.quantity && (
-                          <div className="text-xs text-gray-500 mt-0.5">{item.quantity}</div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => deleteItem(item.id)}
-                        className="p-1 hover:bg-red-100 rounded transition-colors"
-                      >
-                        <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={saveEdit}
+                              className="p-1.5 bg-emerald-100 hover:bg-emerald-200 rounded transition-colors"
+                              title="Save"
+                            >
+                              <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={cancelEditing}
+                              className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                              title="Cancel"
+                            >
+                              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        // Display mode
+                        <>
+                          <button
+                            onClick={() => toggleItem(item.id, item.is_checked)}
+                            className="mt-0.5"
+                          >
+                            {item.is_checked ? (
+                              <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5 text-gray-300 hover:text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            )}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className={`text-sm font-medium ${item.is_checked ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                {item.name}
+                              </div>
+                              {item.inventoryStatus?.inStock && (
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  item.inventoryStatus.quantityLevel === 'full'
+                                    ? 'bg-green-100 text-green-700 border border-green-200'
+                                    : item.inventoryStatus.quantityLevel === 'medium'
+                                    ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                    : 'bg-orange-100 text-orange-700 border border-orange-200'
+                                }`}>
+                                  ✓ In Stock{item.inventoryStatus.quantityLevel === 'low' ? ' (Low)' : ''}
+                                </span>
+                              )}
+                            </div>
+                            {item.quantity && (
+                              <div className="text-xs text-gray-500 mt-0.5">{item.quantity}</div>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => startEditing(item)}
+                              className="p-1 hover:bg-blue-100 rounded transition-colors"
+                              title="Edit"
+                            >
+                              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => deleteItem(item.id)}
+                              className="p-1 hover:bg-red-100 rounded transition-colors"
+                              title="Delete"
+                            >
+                              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
