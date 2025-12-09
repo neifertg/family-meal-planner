@@ -24,12 +24,14 @@ type RecipeWithScore = Recipe & {
 
 type MealPlan = {
   id: string
-  recipe_id: string
+  recipe_id: string | null
   planned_date: string
   meal_type: string
   is_completed: boolean
   guest_count: number
-  recipes: Recipe
+  recipes: Recipe | null
+  adhoc_meal_name: string | null
+  adhoc_ingredients: string[] | null
 }
 
 type DayMeals = {
@@ -212,6 +214,34 @@ export default function CalendarPage() {
     }
   }
 
+  const assignAdhocMeal = async (mealName: string, ingredients: string[], date: string, mealType: string) => {
+    if (!familyId) {
+      alert('Family not found. Please refresh the page.')
+      return
+    }
+
+    const { error } = await supabase
+      .from('meal_plans')
+      .upsert({
+        family_id: familyId,
+        adhoc_meal_name: mealName,
+        adhoc_ingredients: ingredients.length > 0 ? ingredients : null,
+        planned_date: date,
+        meal_type: mealType,
+        guest_count: guestCount
+      }, {
+        onConflict: 'family_id,planned_date,meal_type'
+      })
+
+    if (error) {
+      console.error('Error assigning adhoc meal:', error)
+      alert(`Failed to add meal: ${error.message}`)
+    } else {
+      loadWeekData()
+      setSelectedSlot(null)
+    }
+  }
+
   const removeMeal = async (mealPlanId: string) => {
     const { error } = await supabase
       .from('meal_plans')
@@ -323,10 +353,10 @@ export default function CalendarPage() {
   const weeklyBudget = weekDays.reduce((total, day) => {
     let dayTotal = 0
 
-    // Add cost for each meal
+    // Add cost for each meal (only recipe-based meals have cost estimates)
     const meals = [day.breakfast, day.lunch, day.dinner]
     meals.forEach(meal => {
-      if (meal && meal.recipes.estimated_cost_usd) {
+      if (meal && meal.recipes?.estimated_cost_usd) {
         dayTotal += meal.recipes.estimated_cost_usd
       }
     })
@@ -467,8 +497,10 @@ export default function CalendarPage() {
           recipes={recipes}
           suggestedRecipes={suggestedRecipes}
           onSelect={(recipeId) => assignRecipe(recipeId, selectedSlot.date, selectedSlot.mealType)}
+          onSelectAdhoc={(mealName, ingredients) => assignAdhocMeal(mealName, ingredients, selectedSlot.date, selectedSlot.mealType)}
           onClose={() => setSelectedSlot(null)}
           mealType={selectedSlot.mealType}
+          selectedDate={selectedSlot.date}
           familyMemberCount={familyMemberCount}
           guestCount={guestCount}
           setGuestCount={setGuestCount}
@@ -522,22 +554,27 @@ function MealSlot({
     )
   }
 
+  const isAdhoc = meal.adhoc_meal_name !== null
+  const mealName = isAdhoc ? meal.adhoc_meal_name : meal.recipes?.name
+
   return (
-    <div className={`p-3 rounded-lg border-2 ${meal.is_completed ? 'bg-green-50 border-green-300' : 'bg-purple-50 border-purple-200'}`}>
+    <div className={`p-3 rounded-lg border-2 ${meal.is_completed ? 'bg-green-50 border-green-300' : isAdhoc ? 'bg-amber-50 border-amber-200' : 'bg-purple-50 border-purple-200'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="text-xs font-medium text-gray-600 capitalize flex items-center gap-1 mb-1">
             <span>{mealIcons[mealType as keyof typeof mealIcons]}</span>
             {mealType}
+            {isAdhoc && <span className="text-xs text-amber-600 font-normal ml-1">(Quick Meal)</span>}
           </div>
           <button
-            onClick={() => onViewDetails?.(meal)}
-            className="text-sm font-semibold text-gray-900 line-clamp-2 hover:text-indigo-600 transition-colors text-left"
+            onClick={() => !isAdhoc && onViewDetails?.(meal)}
+            className={`text-sm font-semibold text-gray-900 line-clamp-2 transition-colors text-left ${!isAdhoc ? 'hover:text-indigo-600' : ''}`}
+            disabled={isAdhoc}
           >
-            {meal.recipes.name}
+            {mealName}
           </button>
           <div className="flex items-center gap-2 mt-1">
-            {meal.recipes.estimated_cost_usd && (
+            {meal.recipes?.estimated_cost_usd && (
               <div className="text-xs text-green-700 font-medium">
                 ${meal.recipes.estimated_cost_usd.toFixed(2)}
               </div>
@@ -587,8 +624,10 @@ function RecipeSelectionModal({
   recipes,
   suggestedRecipes,
   onSelect,
+  onSelectAdhoc,
   onClose,
   mealType,
+  selectedDate,
   familyMemberCount,
   guestCount,
   setGuestCount
@@ -596,14 +635,17 @@ function RecipeSelectionModal({
   recipes: Recipe[]
   suggestedRecipes: RecipeWithScore[]
   onSelect: (recipeId: string) => void
+  onSelectAdhoc: (mealName: string, ingredients: string[]) => void
   onClose: () => void
   mealType: string
+  selectedDate: string
   familyMemberCount: number
   guestCount: number
   setGuestCount: (count: number) => void
 }) {
   const [search, setSearch] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(true)
+  const [viewMode, setViewMode] = useState<'recipe' | 'adhoc'>('recipe')
 
   const filteredRecipes = recipes.filter(r =>
     r.name.toLowerCase().includes(search.toLowerCase())
@@ -626,20 +668,46 @@ function RecipeSelectionModal({
             </button>
           </div>
 
-          {/* Search */}
-          <div className="relative">
-            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search recipes..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              autoFocus
-            />
+          {/* Tab Switcher */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setViewMode('recipe')}
+              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                viewMode === 'recipe'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              From Recipe
+            </button>
+            <button
+              onClick={() => setViewMode('adhoc')}
+              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                viewMode === 'adhoc'
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Quick Meal
+            </button>
           </div>
+
+          {/* Search - Only show in recipe mode */}
+          {viewMode === 'recipe' && (
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search recipes..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                autoFocus
+              />
+            </div>
+          )}
 
           {/* Guest Count */}
           <div className="mt-4 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4">
@@ -683,8 +751,10 @@ function RecipeSelectionModal({
           </div>
         </div>
 
-        {/* Recipe List */}
+        {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-6">
+          {viewMode === 'recipe' ? (
+            <>
           {/* Smart Suggestions */}
           {suggestedRecipes.length > 0 && !search && showSuggestions && (
             <div className="mb-6">
@@ -799,7 +869,173 @@ function RecipeSelectionModal({
               ))}
             </div>
           )}
+            </>
+          ) : (
+            <AdhocMealForm
+              mealType={mealType}
+              familyMemberCount={familyMemberCount}
+              guestCount={guestCount}
+              onSave={onSelectAdhoc}
+              onClose={onClose}
+            />
+          )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function AdhocMealForm({
+  mealType,
+  familyMemberCount,
+  guestCount,
+  onSave,
+  onClose
+}: {
+  mealType: string
+  familyMemberCount: number
+  guestCount: number
+  onSave: (mealName: string, ingredients: string[]) => void
+  onClose: () => void
+}) {
+  const [mealName, setMealName] = useState('')
+  const [ingredientInput, setIngredientInput] = useState('')
+  const [ingredients, setIngredients] = useState<string[]>([])
+
+  const addIngredient = () => {
+    const trimmed = ingredientInput.trim()
+    if (trimmed && !ingredients.includes(trimmed)) {
+      setIngredients([...ingredients, trimmed])
+      setIngredientInput('')
+    }
+  }
+
+  const removeIngredient = (index: number) => {
+    setIngredients(ingredients.filter((_, i) => i !== index))
+  }
+
+  const handleSave = () => {
+    if (!mealName.trim()) {
+      alert('Please enter a meal name')
+      return
+    }
+
+    onSave(mealName.trim(), ingredients)
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Info Box */}
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <h3 className="font-semibold text-amber-900 mb-1">Quick Meal</h3>
+            <p className="text-sm text-amber-800">
+              Perfect for simple meals like leftovers, eggs and toast, or cereal. Add ingredients to include them in your shopping list.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Meal Name */}
+      <div>
+        <label htmlFor="mealName" className="block text-sm font-semibold text-gray-700 mb-2">
+          Meal Name <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          id="mealName"
+          value={mealName}
+          onChange={(e) => setMealName(e.target.value)}
+          placeholder="e.g., Leftovers, Eggs and Toast, Cereal"
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-lg"
+          autoFocus
+        />
+      </div>
+
+      {/* Ingredients */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          Ingredients (Optional)
+        </label>
+        <p className="text-sm text-gray-600 mb-3">
+          Add ingredients that will be included in your shopping list
+        </p>
+
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            value={ingredientInput}
+            onChange={(e) => setIngredientInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addIngredient())}
+            placeholder="Type an ingredient and press Enter"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+          />
+          <button
+            onClick={addIngredient}
+            className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium"
+          >
+            Add
+          </button>
+        </div>
+
+        {/* Ingredient List */}
+        {ingredients.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-gray-700">Ingredients ({ingredients.length})</h4>
+            <div className="flex flex-wrap gap-2">
+              {ingredients.map((ingredient, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 bg-amber-100 text-amber-900 px-3 py-1.5 rounded-lg"
+                >
+                  <span>{ingredient}</span>
+                  <button
+                    onClick={() => removeIngredient(index)}
+                    className="hover:text-red-600 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* People Count Info */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 text-sm text-gray-700">
+          <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <span>
+            Serving {familyMemberCount} family member{familyMemberCount !== 1 ? 's' : ''}
+            {guestCount > 0 && ` + ${guestCount} guest${guestCount !== 1 ? 's' : ''}`}
+          </span>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-3 pt-4">
+        <button
+          onClick={onClose}
+          className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={!mealName.trim()}
+          className="flex-1 px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Add Meal
+        </button>
       </div>
     </div>
   )
@@ -821,7 +1057,7 @@ function RecipeDetailsModal({
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{meal.recipes.name}</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{meal.recipes?.name}</h2>
             {meal.guest_count > 0 && (
               <p className="text-sm text-indigo-600 mt-1">
                 Serving {meal.guest_count} guest{meal.guest_count !== 1 ? 's' : ''}
