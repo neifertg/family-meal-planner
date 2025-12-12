@@ -14,8 +14,8 @@ type GroceryItem = {
   category: string | null
   is_checked: boolean
   recipe_id: string | null
-  recipe_name?: string | null
-  adhoc_meal_name?: string | null
+  recipe_names?: string[]  // Array of recipe names
+  adhoc_meal_names?: string[]  // Array of adhoc meal names
 }
 
 type InventoryItem = {
@@ -105,31 +105,46 @@ export default function ShoppingListPage() {
             return item
           }
 
-          // Check if it's an adhoc meal (format: "adhoc-{meal_plan_id}")
-          if (item.recipe_id.startsWith('adhoc-')) {
-            const mealPlanId = item.recipe_id.replace('adhoc-', '')
-            const { data: mealPlan } = await supabase
-              .from('meal_plans')
-              .select('adhoc_meal_name')
-              .eq('id', mealPlanId)
-              .single()
+          // Parse comma-separated recipe IDs
+          const recipeIds = item.recipe_id.split(',').filter((id: string) => id.trim())
 
-            return {
-              ...item,
-              adhoc_meal_name: mealPlan?.adhoc_meal_name || null
-            }
-          } else {
-            // It's a recipe
-            const { data: recipe } = await supabase
-              .from('recipes')
-              .select('name')
-              .eq('id', item.recipe_id)
-              .single()
+          const recipeNames: string[] = []
+          const adhocMealNames: string[] = []
 
-            return {
-              ...item,
-              recipe_name: recipe?.name || null
+          // Fetch names for each recipe ID
+          for (const recipeId of recipeIds) {
+            const trimmedId = recipeId.trim()
+
+            // Check if it's an adhoc meal (format: "adhoc-{meal_plan_id}")
+            if (trimmedId.startsWith('adhoc-')) {
+              const mealPlanId = trimmedId.replace('adhoc-', '')
+              const { data: mealPlan } = await supabase
+                .from('meal_plans')
+                .select('adhoc_meal_name')
+                .eq('id', mealPlanId)
+                .single()
+
+              if (mealPlan?.adhoc_meal_name) {
+                adhocMealNames.push(mealPlan.adhoc_meal_name)
+              }
+            } else {
+              // It's a recipe UUID
+              const { data: recipe } = await supabase
+                .from('recipes')
+                .select('name')
+                .eq('id', trimmedId)
+                .single()
+
+              if (recipe?.name) {
+                recipeNames.push(recipe.name)
+              }
             }
+          }
+
+          return {
+            ...item,
+            recipe_names: recipeNames.length > 0 ? recipeNames : undefined,
+            adhoc_meal_names: adhocMealNames.length > 0 ? adhocMealNames : undefined
           }
         })
       )
@@ -270,7 +285,8 @@ export default function ShoppingListPage() {
       // Insert all aggregated ingredients with combined quantities
       const itemsToInsert = Array.from(ingredientMap.entries()).map(([itemName, value]) => {
         const combinedQty = combineQuantities(value.quantities)
-        const firstRecipeId = Array.from(value.recipeIds)[0]
+        // Store all recipe IDs as comma-separated string
+        const allRecipeIds = Array.from(value.recipeIds).join(',')
 
         return {
           family_id: familyId,
@@ -278,7 +294,7 @@ export default function ShoppingListPage() {
           quantity: combinedQty,
           category: categorizeIngredient(itemName),
           is_checked: false,
-          recipe_id: firstRecipeId
+          recipe_id: allRecipeIds
         }
       })
 
@@ -725,11 +741,16 @@ export default function ShoppingListPage() {
                                   ✓ In Stock{item.inventoryStatus.quantityLevel === 'low' ? ' (Low)' : ''}
                                 </span>
                               )}
-                              {(item.recipe_name || item.adhoc_meal_name) && (
-                                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 border border-purple-200">
-                                  {item.recipe_name || item.adhoc_meal_name}
+                              {item.recipe_names?.map((recipeName, idx) => (
+                                <span key={`recipe-${idx}`} className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                                  {recipeName}
                                 </span>
-                              )}
+                              ))}
+                              {item.adhoc_meal_names?.map((mealName, idx) => (
+                                <span key={`adhoc-${idx}`} className="text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                  {mealName}
+                                </span>
+                              ))}
                             </div>
                             {item.quantity && (
                               <div className="text-xs text-gray-500 mt-0.5">{item.quantity}</div>
