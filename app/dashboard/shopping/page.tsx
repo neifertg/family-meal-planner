@@ -741,16 +741,40 @@ export default function ShoppingListPage() {
                                   ✓ In Stock{item.inventoryStatus.quantityLevel === 'low' ? ' (Low)' : ''}
                                 </span>
                               )}
-                              {item.recipe_names?.map((recipeName, idx) => (
-                                <span key={`recipe-${idx}`} className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 border border-purple-200">
-                                  {recipeName}
-                                </span>
-                              ))}
-                              {item.adhoc_meal_names?.map((mealName, idx) => (
-                                <span key={`adhoc-${idx}`} className="text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
-                                  {mealName}
-                                </span>
-                              ))}
+                              {/* Mobile: Show count for multiple recipes */}
+                              {((item.recipe_names?.length || 0) + (item.adhoc_meal_names?.length || 0)) > 2 ? (
+                                <>
+                                  <span className="sm:hidden text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                                    {(item.recipe_names?.length || 0) + (item.adhoc_meal_names?.length || 0)} recipes
+                                  </span>
+                                  {/* Desktop: Show all badges */}
+                                  <div className="hidden sm:flex sm:flex-wrap sm:gap-1">
+                                    {item.recipe_names?.map((recipeName, idx) => (
+                                      <span key={`recipe-${idx}`} className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                                        {recipeName}
+                                      </span>
+                                    ))}
+                                    {item.adhoc_meal_names?.map((mealName, idx) => (
+                                      <span key={`adhoc-${idx}`} className="text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                        {mealName}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  {item.recipe_names?.map((recipeName, idx) => (
+                                    <span key={`recipe-${idx}`} className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                                      {recipeName}
+                                    </span>
+                                  ))}
+                                  {item.adhoc_meal_names?.map((mealName, idx) => (
+                                    <span key={`adhoc-${idx}`} className="text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                      {mealName}
+                                    </span>
+                                  ))}
+                                </>
+                              )}
                             </div>
                             {item.quantity && (
                               <div className="text-xs text-gray-500 mt-0.5">{item.quantity}</div>
