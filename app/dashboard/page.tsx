@@ -268,13 +268,13 @@ export default async function DashboardPage() {
           </Link>
 
           <Link
-            href="/dashboard/recipes/import"
+            href="/dashboard/recipes/new"
             className="group flex flex-col items-center justify-center p-5 bg-gradient-to-br from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
           >
             <svg className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span className="text-sm font-semibold text-white">Import Recipe</span>
+            <span className="text-sm font-semibold text-white">Add Recipe</span>
           </Link>
 
           <Link
