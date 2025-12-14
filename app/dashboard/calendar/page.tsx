@@ -708,7 +708,7 @@ function RecipeSelectionModal({
                 placeholder="Search recipes..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                 autoFocus
               />
             </div>
@@ -956,7 +956,7 @@ function AdhocMealForm({
           value={mealName}
           onChange={(e) => setMealName(e.target.value)}
           placeholder="e.g., Leftovers, Eggs and Toast, Cereal"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-lg"
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-lg text-gray-900 placeholder:text-gray-400"
           autoFocus
         />
       </div>
@@ -977,7 +977,7 @@ function AdhocMealForm({
             onChange={(e) => setIngredientInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addIngredient())}
             placeholder="Type an ingredient and press Enter"
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
           />
           <button
             onClick={addIngredient}

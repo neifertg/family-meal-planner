@@ -613,14 +613,14 @@ export default function ShoppingListPage() {
             value={newItem}
             onChange={(e) => setNewItem(e.target.value)}
             placeholder="Item name"
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
           />
           <input
             type="text"
             value={newQuantity}
             onChange={(e) => setNewQuantity(e.target.value)}
             placeholder="Quantity (optional)"
-            className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
           />
           <button
             type="submit"
@@ -676,7 +676,7 @@ export default function ShoppingListPage() {
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
                               placeholder="Item name"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm text-gray-900 placeholder:text-gray-400"
                               autoFocus
                             />
                             <input
@@ -684,7 +684,7 @@ export default function ShoppingListPage() {
                               value={editQuantity}
                               onChange={(e) => setEditQuantity(e.target.value)}
                               placeholder="Quantity (optional)"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm text-gray-900 placeholder:text-gray-400"
                             />
                           </div>
                           <div className="flex gap-1">
