@@ -8,11 +8,14 @@ import RecipePhotoOCR from '@/components/RecipePhotoOCR'
 import RecipeURLScraper from '@/components/RecipeURLScraper'
 import { parseRecipeText } from '@/lib/parseRecipeText'
 import { ExtractedRecipe } from '@/lib/llmRecipeExtractor/types'
+import ErrorBanner from '@/components/ErrorBanner'
+import { InputField, TextAreaField } from '@/components/FormField'
 
 export default function NewRecipePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [showOCR, setShowOCR] = useState(false)
   const [showURLScraper, setShowURLScraper] = useState(false)
 
@@ -84,20 +87,27 @@ export default function NewRecipePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setFieldErrors({})
 
     // Validate required fields
+    const errors: Record<string, string> = {}
+
     if (!name.trim()) {
-      setError('Recipe name is required')
-      return
+      errors.name = 'Recipe name is required'
     }
 
     if (!ingredientsText.trim()) {
-      setError('Please add at least one ingredient')
-      return
+      errors.ingredients = 'Please add at least one ingredient'
     }
 
     if (!instructionsText.trim()) {
-      setError('Please add at least one instruction')
+      errors.instructions = 'Please add at least one instruction'
+    }
+
+    // If there are validation errors, show them
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      setError('Please fill in all required fields')
       return
     }
 
@@ -222,12 +232,7 @@ export default function NewRecipePage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
-        {error && (
-          <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-lg">
-            <p className="font-medium">Error</p>
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
+        <ErrorBanner error={error} onDismiss={() => setError(null)} />
 
         {/* URL Scraper Section */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
@@ -294,34 +299,26 @@ export default function NewRecipePage() {
           </h2>
 
           <div className="space-y-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Recipe Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Homemade Pizza"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
-                required
-              />
-            </div>
+            <InputField
+              label="Recipe Name"
+              required
+              error={fieldErrors.name}
+              type="text"
+              id="name"
+              value={name}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+              placeholder="e.g., Homemade Pizza"
+            />
 
-            <div>
-              <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Description
-              </label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="A brief description of your recipe..."
-                rows={2}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
-              />
-            </div>
+            <TextAreaField
+              label="Description"
+              error={fieldErrors.description}
+              id="description"
+              value={description}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+              placeholder="A brief description of your recipe..."
+              rows={2}
+            />
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -533,33 +530,41 @@ export default function NewRecipePage() {
 
         {/* Ingredients */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
             <span className="text-2xl">🥘</span>
-            Ingredients <span className="text-red-500">*</span>
+            Ingredients
           </h2>
           <p className="text-sm text-gray-500 mb-3">Enter one ingredient per line</p>
-          <textarea
+          <TextAreaField
+            label=""
+            required
+            error={fieldErrors.ingredients}
+            scrollToError={true}
             value={ingredientsText}
-            onChange={(e) => setIngredientsText(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setIngredientsText(e.target.value)}
             placeholder="1 cup flour&#10;2 eggs&#10;1/2 cup sugar&#10;1 tsp vanilla extract"
             rows={7}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm transition-shadow text-gray-900 placeholder:text-gray-400"
+            className="font-mono text-sm"
           />
         </div>
 
         {/* Instructions */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
             <span className="text-2xl">👨‍🍳</span>
-            Instructions <span className="text-red-500">*</span>
+            Instructions
           </h2>
           <p className="text-sm text-gray-500 mb-3">Enter one step per line</p>
-          <textarea
+          <TextAreaField
+            label=""
+            required
+            error={fieldErrors.instructions}
+            scrollToError={true}
             value={instructionsText}
-            onChange={(e) => setInstructionsText(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInstructionsText(e.target.value)}
             placeholder="Preheat oven to 350°F&#10;Mix dry ingredients in a bowl&#10;Add wet ingredients and stir until combined&#10;Pour into baking pan&#10;Bake for 25-30 minutes"
             rows={8}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm transition-shadow text-gray-900 placeholder:text-gray-400"
+            className="font-mono text-sm"
           />
         </div>
 
