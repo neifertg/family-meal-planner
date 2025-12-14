@@ -5,6 +5,7 @@ import { ExtractedReceipt, ReceiptItem } from '@/lib/receiptScanner/types'
 import { saveReceiptCorrections } from '@/lib/receiptScanner/learningSystem'
 import { createClient } from '@/lib/supabase/client'
 import { estimateExpirationDate } from '@/lib/receiptScanner/expirationEstimator'
+import ImageEnhancer from '@/components/ImageEnhancer'
 
 type ReceiptScannerProps = {
   onReceiptProcessed: (receipt: ExtractedReceipt, applyToBudget: boolean) => void
@@ -14,6 +15,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const [processing, setProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [enhancedImageUrl, setEnhancedImageUrl] = useState<string | null>(null)
+  const [showEnhancer, setShowEnhancer] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [extractedReceipt, setExtractedReceipt] = useState<ExtractedReceipt | null>(null)
   const [originalItems, setOriginalItems] = useState<ReceiptItem[]>([]) // Store original for comparison
@@ -60,8 +63,6 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     }
 
     setError(null)
-    setProcessing(true)
-    setProgress(0)
     setExtractedReceipt(null)
     setShowReview(false)
     setConfidence(null)
@@ -72,28 +73,38 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       // Create preview
       const reader = new FileReader()
       reader.onload = (e) => {
-        setPreviewUrl(e.target?.result as string)
+        const dataUrl = e.target?.result as string
+        setPreviewUrl(dataUrl)
+        setEnhancedImageUrl(dataUrl) // Initialize with original
+        setShowEnhancer(true) // Show enhancement UI
       }
       reader.readAsDataURL(file)
+    } catch (err: any) {
+      console.error('File reading error:', err)
+      setError('Failed to read file. Please try again.')
+    }
+  }
 
+  const handleEnhancedImageUpdate = (enhancedImage: string) => {
+    setEnhancedImageUrl(enhancedImage)
+  }
+
+  const handleProceedWithScan = async () => {
+    if (!enhancedImageUrl) return
+
+    setProcessing(true)
+    setProgress(0)
+    setShowEnhancer(false)
+
+    try {
       setProgress(30)
 
-      // Convert image to base64
-      const imageReader = new FileReader()
-      const imageDataPromise = new Promise<string>((resolve) => {
-        imageReader.onload = (e) => resolve(e.target?.result as string)
-      })
-      imageReader.readAsDataURL(file)
-      const imageData = await imageDataPromise
-
-      setProgress(50)
-
-      // Call Claude API with image data and family context
+      // Call Claude API with enhanced image data and family context
       const response = await fetch('/api/scan-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageData,
+          imageData: enhancedImageUrl,
           familyId,
           storeName: null // Will be populated from extracted receipt
         }),
@@ -187,6 +198,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
 
   const handleClear = () => {
     setPreviewUrl(null)
+    setEnhancedImageUrl(null)
+    setShowEnhancer(false)
     setProgress(0)
     setError(null)
     setExtractedReceipt(null)
@@ -251,43 +264,61 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
         </div>
       )}
 
-      {/* Preview and Progress */}
-      {previewUrl && !showReview && (
+      {/* Image Enhancement Step */}
+      {showEnhancer && previewUrl && !showReview && !processing && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-bold text-gray-900">Enhance Image Quality</h3>
+            <button
+              onClick={handleClear}
+              className="text-sm text-gray-600 hover:text-gray-800"
+            >
+              ✕ Cancel
+            </button>
+          </div>
+
+          <ImageEnhancer
+            originalImage={previewUrl}
+            onEnhancedImage={handleEnhancedImageUpdate}
+            autoEnhance={true}
+          />
+
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={handleProceedWithScan}
+              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+            >
+              Scan Receipt
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Processing Progress */}
+      {processing && previewUrl && (
         <div className="space-y-4">
           {/* Image Preview */}
           <div className="relative rounded-lg overflow-hidden border border-gray-200">
             <img
-              src={previewUrl}
+              src={enhancedImageUrl || previewUrl}
               alt="Receipt preview"
               className="w-full h-auto max-h-96 object-contain bg-gray-50"
             />
-            {!processing && (
-              <button
-                onClick={handleClear}
-                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
           </div>
 
           {/* Progress Bar */}
-          {processing && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Processing receipt...</span>
-                <span className="text-sm font-semibold text-green-600">{progress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">Processing receipt with Claude Vision...</span>
+              <span className="text-sm font-semibold text-green-600">{progress}%</span>
             </div>
-          )}
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-gradient-to-r from-green-600 to-emerald-600 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+          </div>
         </div>
       )}
 

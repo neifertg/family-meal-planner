@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createWorker, Worker } from 'tesseract.js'
 import { ExtractedRecipe } from '@/lib/llmRecipeExtractor/types'
+import ImageEnhancer from '@/components/ImageEnhancer'
 
 type RecipePhotoOCRProps = {
   onTextExtracted: (text: string) => void
@@ -15,6 +16,8 @@ export default function RecipePhotoOCR({ onTextExtracted, onRecipeExtracted }: R
   const [processing, setProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [enhancedImageUrl, setEnhancedImageUrl] = useState<string | null>(null)
+  const [showEnhancer, setShowEnhancer] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [extractionMethod, setExtractionMethod] = useState<ExtractionMethod>('claude-vision')
   const [extractedRecipe, setExtractedRecipe] = useState<ExtractedRecipe | null>(null)
@@ -38,8 +41,6 @@ export default function RecipePhotoOCR({ onTextExtracted, onRecipeExtracted }: R
     }
 
     setError(null)
-    setProcessing(true)
-    setProgress(0)
     setExtractedRecipe(null)
     setConfidence(null)
     setTokensUsed(null)
@@ -48,27 +49,39 @@ export default function RecipePhotoOCR({ onTextExtracted, onRecipeExtracted }: R
       // Create preview
       const reader = new FileReader()
       reader.onload = (e) => {
-        setPreviewUrl(e.target?.result as string)
+        const dataUrl = e.target?.result as string
+        setPreviewUrl(dataUrl)
+        setEnhancedImageUrl(dataUrl) // Initialize with original
+        setShowEnhancer(true) // Show enhancement UI
       }
       reader.readAsDataURL(file)
+    } catch (err: any) {
+      console.error('File reading error:', err)
+      setError('Failed to read file. Please try again.')
+    }
+  }
 
+  const handleEnhancedImageUpdate = (enhancedImage: string) => {
+    setEnhancedImageUrl(enhancedImage)
+  }
+
+  const handleProceedWithExtraction = async () => {
+    if (!enhancedImageUrl) return
+
+    setProcessing(true)
+    setProgress(0)
+    setShowEnhancer(false)
+
+    try {
       if (extractionMethod === 'claude-vision') {
         // Use Claude Vision for direct recipe extraction
         setProgress(50)
 
-        // Convert image to base64
-        const imageReader = new FileReader()
-        const imageDataPromise = new Promise<string>((resolve) => {
-          imageReader.onload = (e) => resolve(e.target?.result as string)
-        })
-        imageReader.readAsDataURL(file)
-        const imageData = await imageDataPromise
-
-        // Call API with image data
+        // Call API with enhanced image data
         const response = await fetch('/api/scrape-recipe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageData }),
+          body: JSON.stringify({ imageData: enhancedImageUrl }),
         })
 
         const result = await response.json()
@@ -92,7 +105,11 @@ export default function RecipePhotoOCR({ onTextExtracted, onRecipeExtracted }: R
 
         setProgress(100)
       } else {
-        // Use Tesseract OCR
+        // Use Tesseract OCR with enhanced image
+        // Convert data URL to blob for Tesseract
+        const response = await fetch(enhancedImageUrl)
+        const blob = await response.blob()
+
         const worker: Worker = await createWorker('eng', 1, {
           logger: (m) => {
             if (m.status === 'recognizing text') {
@@ -101,7 +118,7 @@ export default function RecipePhotoOCR({ onTextExtracted, onRecipeExtracted }: R
           },
         })
 
-        const { data: { text } } = await worker.recognize(file)
+        const { data: { text } } = await worker.recognize(blob)
         await worker.terminate()
 
         onTextExtracted(text)
@@ -137,6 +154,8 @@ export default function RecipePhotoOCR({ onTextExtracted, onRecipeExtracted }: R
 
   const handleClear = () => {
     setPreviewUrl(null)
+    setEnhancedImageUrl(null)
+    setShowEnhancer(false)
     setProgress(0)
     setError(null)
     setExtractedRecipe(null)
@@ -218,52 +237,63 @@ export default function RecipePhotoOCR({ onTextExtracted, onRecipeExtracted }: R
         </div>
       )}
 
-      {/* Preview and Progress */}
-      {previewUrl && (
+      {/* Image Enhancement Step */}
+      {showEnhancer && previewUrl && !processing && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-bold text-gray-900">Enhance Image Quality</h3>
+            <button
+              onClick={handleClear}
+              className="text-sm text-gray-600 hover:text-gray-800"
+            >
+              ✕ Cancel
+            </button>
+          </div>
+
+          <ImageEnhancer
+            originalImage={previewUrl}
+            onEnhancedImage={handleEnhancedImageUpdate}
+            autoEnhance={true}
+          />
+
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={handleProceedWithExtraction}
+              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+            >
+              Extract Recipe
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Processing Progress */}
+      {processing && previewUrl && (
         <div className="space-y-4">
           {/* Image Preview */}
           <div className="relative rounded-lg overflow-hidden border border-gray-200">
             <img
-              src={previewUrl}
+              src={enhancedImageUrl || previewUrl}
               alt="Recipe preview"
               className="w-full max-h-96 object-contain bg-gray-50"
             />
-            {!processing && (
-              <button
-                onClick={handleClear}
-                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
-                title="Remove image"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
           </div>
 
           {/* Progress Bar */}
-          {processing && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium text-gray-700">Processing image...</span>
-                <span className="text-purple-600 font-semibold">{progress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 transition-all duration-300 ease-out"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <p className="text-xs text-gray-600 text-center">
-                Using optical character recognition to read recipe text...
-              </p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-gray-700">
+                {extractionMethod === 'claude-vision' ? 'Extracting recipe with Claude Vision...' : 'Processing with OCR...'}
+              </span>
+              <span className="text-purple-600 font-semibold">{progress}%</span>
             </div>
-          )}
+            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 transition-all duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
