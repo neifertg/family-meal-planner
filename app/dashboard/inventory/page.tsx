@@ -507,7 +507,7 @@ export default function InventoryPage() {
                                     if (e.key === 'Escape') setEditingExpirationId(null)
                                   }}
                                   autoFocus
-                                  className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                                 />
                                 <button
                                   onClick={() => setEditingExpirationId(null)}
@@ -623,7 +623,7 @@ export default function InventoryPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   placeholder="e.g., Milk, Eggs, Chicken"
                   required
                 />
@@ -636,7 +636,7 @@ export default function InventoryPage() {
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value as CategoryType })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                 >
                   <option value="produce">Produce</option>
                   <option value="dairy">Dairy</option>
@@ -676,7 +676,7 @@ export default function InventoryPage() {
                   type="date"
                   value={formData.expiration_date}
                   onChange={(e) => setFormData({ ...formData, expiration_date: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                 />
               </div>
 

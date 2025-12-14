@@ -532,7 +532,7 @@ export default function FamilyPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-400"
                   placeholder="Enter name"
                   required
                 />
@@ -545,7 +545,7 @@ export default function FamilyPage() {
                   type="number"
                   value={formData.age}
                   onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-400"
                   placeholder="Enter age"
                   min="0"
                   max="150"
@@ -561,7 +561,7 @@ export default function FamilyPage() {
                     value={newRestriction}
                     onChange={(e) => setNewRestriction(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addRestriction())}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-400"
                     placeholder="Add restriction (e.g., Gluten-free)"
                   />
                   <button
@@ -595,7 +595,7 @@ export default function FamilyPage() {
                     value={newIngredient}
                     onChange={(e) => setNewIngredient(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addIngredient())}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-400"
                     placeholder="Add ingredient (e.g., Chicken)"
                   />
                   <button
@@ -629,7 +629,7 @@ export default function FamilyPage() {
                     value={newCuisine}
                     onChange={(e) => setNewCuisine(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCuisine())}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-400"
                     placeholder="Add cuisine (e.g., Italian)"
                   />
                   <button
