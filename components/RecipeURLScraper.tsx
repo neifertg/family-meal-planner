@@ -13,17 +13,145 @@ type ExtractionInfo = {
   tokensUsed?: number
 }
 
+type ErrorType =
+  | 'network'
+  | 'invalid-url'
+  | 'no-recipe'
+  | 'extraction-failed'
+  | 'server-error'
+  | 'paywalled'
+  | 'unknown'
+
+type DetailedError = {
+  type: ErrorType
+  message: string
+  technicalDetails?: string
+  suggestions: string[]
+}
+
+function categorizeError(errorMessage: string, statusCode?: number): DetailedError {
+  const lowerError = errorMessage.toLowerCase()
+
+  // Network errors
+  if (lowerError.includes('network') || lowerError.includes('fetch') || lowerError.includes('failed to fetch')) {
+    return {
+      type: 'network',
+      message: 'Unable to connect to the website',
+      technicalDetails: errorMessage,
+      suggestions: [
+        'Check your internet connection',
+        'The website might be temporarily down',
+        'Try again in a few moments',
+        'Check if the URL is accessible in your browser'
+      ]
+    }
+  }
+
+  // Invalid URL
+  if (lowerError.includes('invalid url') || lowerError.includes('malformed') || statusCode === 400) {
+    return {
+      type: 'invalid-url',
+      message: 'The URL appears to be invalid',
+      technicalDetails: errorMessage,
+      suggestions: [
+        'Make sure the URL starts with http:// or https://',
+        'Check for typos in the URL',
+        'Copy the URL directly from your browser\'s address bar',
+        'Example format: https://www.example.com/recipe'
+      ]
+    }
+  }
+
+  // No recipe found
+  if (lowerError.includes('no recipe') || lowerError.includes('not found') || lowerError.includes('could not find')) {
+    return {
+      type: 'no-recipe',
+      message: 'No recipe data found on this page',
+      technicalDetails: errorMessage,
+      suggestions: [
+        'Make sure the URL points directly to a recipe page',
+        'Try enabling "Always use Claude AI" for better extraction',
+        'Some websites don\'t support automated extraction',
+        'Consider manually copying the recipe instead'
+      ]
+    }
+  }
+
+  // Paywalled/restricted content
+  if (lowerError.includes('paywall') || lowerError.includes('subscription') || lowerError.includes('login required') || statusCode === 401 || statusCode === 403) {
+    return {
+      type: 'paywalled',
+      message: 'This recipe requires a subscription or login',
+      technicalDetails: errorMessage,
+      suggestions: [
+        'Log in to the website in your browser first',
+        'Check if you have access to this content',
+        'Some premium content cannot be extracted',
+        'Try copying the recipe manually if you have access'
+      ]
+    }
+  }
+
+  // Server errors
+  if (statusCode && statusCode >= 500) {
+    return {
+      type: 'server-error',
+      message: 'The recipe website is experiencing issues',
+      technicalDetails: errorMessage,
+      suggestions: [
+        'The website\'s server is currently down',
+        'Try again in a few minutes',
+        'Check if the website is working in your browser',
+        'Consider trying a different recipe source'
+      ]
+    }
+  }
+
+  // Extraction failed
+  if (lowerError.includes('extraction') || lowerError.includes('parsing') || lowerError.includes('failed to extract')) {
+    return {
+      type: 'extraction-failed',
+      message: 'Unable to extract recipe data from this page',
+      technicalDetails: errorMessage,
+      suggestions: [
+        'Try enabling "Always use Claude AI" for smarter extraction',
+        'The page format might not be supported',
+        'Ensure the URL points to a recipe page (not a blog post or article)',
+        'Consider copying the recipe manually'
+      ]
+    }
+  }
+
+  // Unknown error
+  return {
+    type: 'unknown',
+    message: 'An unexpected error occurred',
+    technicalDetails: errorMessage,
+    suggestions: [
+      'Try again in a moment',
+      'Check if the URL is accessible in your browser',
+      'Try enabling "Always use Claude AI" mode',
+      'If the problem persists, try a different recipe URL'
+    ]
+  }
+}
+
 export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperProps) {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<DetailedError | null>(null)
   const [scrapedRecipe, setScrapedRecipe] = useState<ExtractedRecipe | null>(null)
   const [extractionInfo, setExtractionInfo] = useState<ExtractionInfo | null>(null)
   const [forceAI, setForceAI] = useState(false)
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false)
 
   const handleScrape = async () => {
     if (!url.trim()) {
-      setError('Please enter a URL')
+      setError({
+        type: 'invalid-url',
+        message: 'Please enter a URL',
+        suggestions: ['Paste a recipe URL from any website', 'Example: https://www.example.com/recipe']
+      })
       return
     }
 
@@ -31,6 +159,7 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
     setLoading(true)
     setScrapedRecipe(null)
     setExtractionInfo(null)
+    setShowTechnicalDetails(false)
 
     try {
       const response = await fetch('/api/scrape-recipe', {
@@ -55,11 +184,13 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
         })
         onRecipeScraped(result.recipe)
       } else {
-        setError(result.error || 'Failed to extract recipe')
+        const errorMsg = result.error || 'Failed to extract recipe'
+        setError(categorizeError(errorMsg, response.status))
       }
     } catch (err: any) {
       console.error('Extraction error:', err)
-      setError('Failed to extract recipe. Please try again.')
+      const errorMsg = err.message || 'Failed to extract recipe. Please try again.'
+      setError(categorizeError(errorMsg))
     } finally {
       setLoading(false)
     }
@@ -169,11 +300,107 @@ export default function RecipeURLScraper({ onRecipeScraped }: RecipeURLScraperPr
         </div>
       )}
 
-      {/* Error Message */}
+      {/* Enhanced Error Message */}
       {error && (
-        <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-lg">
-          <p className="font-medium">Error</p>
-          <p className="text-sm">{error}</p>
+        <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 shadow-lg animate-slide-down">
+          <div className="flex items-start gap-3">
+            {/* Error Icon - varies by type */}
+            <div className="flex-shrink-0">
+              {error.type === 'network' && (
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+                </svg>
+              )}
+              {error.type === 'invalid-url' && (
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              )}
+              {error.type === 'no-recipe' && (
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              {error.type === 'paywalled' && (
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              )}
+              {error.type === 'server-error' && (
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                </svg>
+              )}
+              {(error.type === 'extraction-failed' || error.type === 'unknown') && (
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+            </div>
+
+            {/* Error Content */}
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-bold text-red-900 mb-1">
+                {error.message}
+              </h3>
+
+              {/* Suggestions */}
+              {error.suggestions.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-sm font-semibold text-red-800 mb-1">What to try:</p>
+                  <ul className="space-y-1">
+                    {error.suggestions.map((suggestion, idx) => (
+                      <li key={idx} className="text-sm text-red-700 flex items-start gap-2">
+                        <span className="text-red-500 mt-0.5">•</span>
+                        <span>{suggestion}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Technical Details (collapsible) */}
+              {error.technicalDetails && (
+                <div className="mt-3">
+                  <button
+                    onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
+                    className="text-xs text-red-700 hover:text-red-800 font-medium flex items-center gap-1 underline"
+                  >
+                    <svg className={`w-3 h-3 transition-transform ${showTechnicalDetails ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    {showTechnicalDetails ? 'Hide' : 'Show'} technical details
+                  </button>
+                  {showTechnicalDetails && (
+                    <div className="mt-2 p-2 bg-red-100 rounded text-xs text-red-900 font-mono break-all">
+                      {error.technicalDetails}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Quick Actions */}
+              <div className="flex gap-2 mt-4">
+                {!forceAI && error.type !== 'invalid-url' && (
+                  <button
+                    onClick={() => {
+                      setForceAI(true)
+                      setTimeout(() => handleScrape(), 100)
+                    }}
+                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    🤖 Retry with AI Mode
+                  </button>
+                )}
+                <button
+                  onClick={() => setError(null)}
+                  className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
