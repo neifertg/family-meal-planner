@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import RecipeRating from '@/components/RecipeRating'
 
 type Recipe = {
   id: string
@@ -614,6 +615,15 @@ export default function RecipeDetailPage() {
                   </a>
                 </div>
               )}
+
+              {/* Family Ratings */}
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Family Ratings</h2>
+                <RecipeRating
+                  recipeId={recipe.id}
+                  recipeName={recipe.name}
+                />
+              </div>
 
               {/* Action Buttons */}
               <div className="mt-8 flex gap-3">

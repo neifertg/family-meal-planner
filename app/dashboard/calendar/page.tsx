@@ -566,13 +566,18 @@ function MealSlot({
             {mealType}
             {isAdhoc && <span className="text-xs text-amber-600 font-normal ml-1">(Quick Meal)</span>}
           </div>
-          <button
-            onClick={() => !isAdhoc && onViewDetails?.(meal)}
-            className={`text-sm font-semibold text-gray-900 line-clamp-2 transition-colors text-left ${!isAdhoc ? 'hover:text-indigo-600' : ''}`}
-            disabled={isAdhoc}
-          >
-            {mealName}
-          </button>
+          {!isAdhoc && meal.recipe_id ? (
+            <Link
+              href={`/dashboard/recipes/${meal.recipe_id}`}
+              className="text-sm font-semibold text-gray-900 line-clamp-2 transition-colors text-left hover:text-indigo-600 block"
+            >
+              {mealName}
+            </Link>
+          ) : (
+            <div className="text-sm font-semibold text-gray-900 line-clamp-2">
+              {mealName}
+            </div>
+          )}
           <div className="flex items-center gap-2 mt-1">
             {meal.recipes?.estimated_cost_usd && (
               <div className="text-xs text-green-700 font-medium">
