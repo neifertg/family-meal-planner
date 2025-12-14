@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import GroupSelector from '@/components/GroupSelector'
 
 type Recipe = {
   id: string
@@ -26,27 +27,81 @@ export default function RecipesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCuisine, setSelectedCuisine] = useState<string>('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
   useEffect(() => {
     loadRecipes()
-  }, [])
+  }, [selectedGroupId])
 
   const loadRecipes = async () => {
     try {
+      setLoading(true)
       const supabase = createClient()
-      const { data, error } = await supabase
-        .from('recipes')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const { data: { user } } = await supabase.auth.getUser()
 
-      if (error) throw error
-      setRecipes(data || [])
+      if (!user) {
+        setError('You must be logged in to view recipes')
+        setLoading(false)
+        return
+      }
+
+      let query
+
+      if (selectedGroupId) {
+        // Filter recipes by selected umbrella group
+        const { data, error } = await supabase
+          .from('recipes')
+          .select(`
+            *,
+            recipe_umbrella_group_shares!inner(umbrella_group_id)
+          `)
+          .eq('recipe_umbrella_group_shares.umbrella_group_id', selectedGroupId)
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+        setRecipes(data || [])
+      } else {
+        // Show all recipes from all groups the user belongs to
+        const { data: memberships } = await supabase
+          .from('umbrella_group_memberships')
+          .select('umbrella_group_id')
+          .eq('user_id', user.id)
+
+        if (memberships && memberships.length > 0) {
+          const groupIds = memberships.map(m => m.umbrella_group_id)
+
+          const { data, error } = await supabase
+            .from('recipes')
+            .select(`
+              *,
+              recipe_umbrella_group_shares!inner(umbrella_group_id)
+            `)
+            .in('recipe_umbrella_group_shares.umbrella_group_id', groupIds)
+            .order('created_at', { ascending: false })
+
+          if (error) throw error
+
+          // Remove duplicates (recipes shared with multiple groups)
+          const uniqueRecipes = Array.from(
+            new Map(data?.map(r => [r.id, r])).values()
+          )
+
+          setRecipes(uniqueRecipes || [])
+        } else {
+          // No groups yet, show empty
+          setRecipes([])
+        }
+      }
     } catch (err: any) {
       console.error('Error loading recipes:', err)
       setError(err.message || 'Failed to load recipes')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleGroupChange = (groupId: string | null) => {
+    setSelectedGroupId(groupId)
   }
 
   // Get unique cuisines and categories for filters
@@ -87,23 +142,34 @@ export default function RecipesPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-orange-500 via-pink-500 to-rose-500 rounded-2xl p-8 mb-8 text-white shadow-xl">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">My Recipes</h1>
-              <p className="text-orange-100 text-lg">
-                {filteredRecipes.length} of {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
-              </p>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-4xl font-bold mb-2">My Recipes</h1>
+                <p className="text-orange-100 text-lg">
+                  {filteredRecipes.length} of {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/dashboard/recipes/new"
+                  className="bg-white hover:bg-white/90 text-rose-600 font-semibold py-2.5 px-6 rounded-lg transition-all duration-200 inline-flex items-center gap-2 shadow-md"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Recipe
+                </Link>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/dashboard/recipes/new"
-                className="bg-white hover:bg-white/90 text-rose-600 font-semibold py-2.5 px-6 rounded-lg transition-all duration-200 inline-flex items-center gap-2 shadow-md"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Recipe
-              </Link>
+
+            {/* Group Selector */}
+            <div className="flex items-center gap-3">
+              <span className="text-orange-100 font-medium">Filter by group:</span>
+              <GroupSelector
+                onGroupChange={handleGroupChange}
+                currentGroupId={selectedGroupId}
+              />
             </div>
           </div>
         </div>
@@ -195,14 +261,24 @@ export default function RecipesPage() {
             </svg>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No recipes yet</h2>
             <p className="text-gray-600 mb-6">
-              Start building your collection by adding your first recipe
+              {selectedGroupId
+                ? "This group doesn't have any recipes shared yet."
+                : "Join or create an umbrella group to start sharing recipes with your extended family."}
             </p>
-            <Link
-              href="/dashboard/recipes/new"
-              className="inline-block bg-gradient-to-r from-orange-500 via-pink-500 to-rose-500 hover:from-orange-600 hover:via-pink-600 hover:to-rose-600 text-white font-semibold py-3 px-8 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              Add Your First Recipe
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                href="/dashboard/groups/new"
+                className="inline-block bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-8 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+              >
+                Create a Group
+              </Link>
+              <Link
+                href="/dashboard/recipes/new"
+                className="inline-block bg-gradient-to-r from-orange-500 via-pink-500 to-rose-500 hover:from-orange-600 hover:via-pink-600 hover:to-rose-600 text-white font-semibold py-3 px-8 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+              >
+                Add a Recipe
+              </Link>
+            </div>
           </div>
         )}
 
