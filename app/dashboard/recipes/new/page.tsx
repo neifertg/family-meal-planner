@@ -304,7 +304,7 @@ export default function NewRecipePage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Homemade Pizza"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
                 required
               />
             </div>
@@ -319,7 +319,7 @@ export default function NewRecipePage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="A brief description of your recipe..."
                 rows={2}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
               />
             </div>
 
@@ -365,7 +365,7 @@ export default function NewRecipePage() {
                     setImageFile(null)
                   }}
                   placeholder="https://example.com/image.jpg"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
                 />
               )}
 
@@ -383,7 +383,7 @@ export default function NewRecipePage() {
                         setImageUrl('')
                       }
                     }}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 text-gray-900 placeholder:text-gray-400"
                   />
                   {imageFile && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -410,7 +410,7 @@ export default function NewRecipePage() {
                   onChange={(e) => setPrepTime(e.target.value)}
                   placeholder="15"
                   min="0"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
                 />
               </div>
 
@@ -425,7 +425,7 @@ export default function NewRecipePage() {
                   onChange={(e) => setCookTime(e.target.value)}
                   placeholder="30"
                   min="0"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
                 />
               </div>
 
@@ -440,7 +440,7 @@ export default function NewRecipePage() {
                   onChange={(e) => setServings(e.target.value)}
                   placeholder="4"
                   min="1"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
                 />
               </div>
 
@@ -456,7 +456,7 @@ export default function NewRecipePage() {
                   placeholder="12.00"
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
                 />
               </div>
 
@@ -470,7 +470,7 @@ export default function NewRecipePage() {
                   value={cuisine}
                   onChange={(e) => setCuisine(e.target.value)}
                   placeholder="Italian"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
                 />
               </div>
             </div>
@@ -483,7 +483,7 @@ export default function NewRecipePage() {
                 id="category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
               >
                 <option value="">Select a category</option>
                 <option value="Breakfast">Breakfast</option>
@@ -508,7 +508,7 @@ export default function NewRecipePage() {
                   value={owner}
                   onChange={(e) => setOwner(e.target.value)}
                   placeholder="e.g., Grandma, Mom"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
                 />
                 <p className="text-xs text-gray-500 mt-1">Who owns or created this recipe (optional)</p>
               </div>
@@ -523,7 +523,7 @@ export default function NewRecipePage() {
                   value={uploadedBy}
                   onChange={(e) => setUploadedBy(e.target.value)}
                   placeholder="e.g., Your name"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow text-gray-900 placeholder:text-gray-400"
                 />
                 <p className="text-xs text-gray-500 mt-1">Who added this recipe to the app (optional)</p>
               </div>
@@ -543,7 +543,7 @@ export default function NewRecipePage() {
             onChange={(e) => setIngredientsText(e.target.value)}
             placeholder="1 cup flour&#10;2 eggs&#10;1/2 cup sugar&#10;1 tsp vanilla extract"
             rows={7}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm transition-shadow"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm transition-shadow text-gray-900 placeholder:text-gray-400"
           />
         </div>
 
@@ -559,7 +559,7 @@ export default function NewRecipePage() {
             onChange={(e) => setInstructionsText(e.target.value)}
             placeholder="Preheat oven to 350°F&#10;Mix dry ingredients in a bowl&#10;Add wet ingredients and stir until combined&#10;Pour into baking pan&#10;Bake for 25-30 minutes"
             rows={8}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm transition-shadow"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm transition-shadow text-gray-900 placeholder:text-gray-400"
           />
         </div>
 

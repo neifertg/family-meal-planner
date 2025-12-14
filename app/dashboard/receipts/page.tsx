@@ -240,7 +240,7 @@ export default function ReceiptsPage() {
                     value={budgetInput}
                     onChange={(e) => setBudgetInput(e.target.value)}
                     placeholder="0.00"
-                    className="w-full pl-7 pr-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full pl-7 pr-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-400"
                     step="0.01"
                     min="0"
                   />

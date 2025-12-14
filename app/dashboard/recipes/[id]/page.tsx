@@ -249,7 +249,7 @@ export default function RecipeDetailPage() {
                   id="name"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   required
                 />
               </div>
@@ -263,7 +263,7 @@ export default function RecipeDetailPage() {
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                 />
               </div>
 
@@ -309,7 +309,7 @@ export default function RecipeDetailPage() {
                       setEditImageFile(null)
                     }}
                     placeholder="https://example.com/image.jpg"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   />
                 )}
 
@@ -327,7 +327,7 @@ export default function RecipeDetailPage() {
                           setEditImageUrl('')
                         }
                       }}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 text-gray-900 placeholder:text-gray-400"
                     />
                     {editImageFile && (
                       <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -353,7 +353,7 @@ export default function RecipeDetailPage() {
                     value={editPrepTime}
                     onChange={(e) => setEditPrepTime(e.target.value)}
                     min="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   />
                 </div>
 
@@ -367,7 +367,7 @@ export default function RecipeDetailPage() {
                     value={editCookTime}
                     onChange={(e) => setEditCookTime(e.target.value)}
                     min="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   />
                 </div>
 
@@ -381,7 +381,7 @@ export default function RecipeDetailPage() {
                     value={editServings}
                     onChange={(e) => setEditServings(e.target.value)}
                     min="1"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   />
                 </div>
 
@@ -394,7 +394,7 @@ export default function RecipeDetailPage() {
                     id="cuisine"
                     value={editCuisine}
                     onChange={(e) => setEditCuisine(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   />
                 </div>
               </div>
@@ -407,7 +407,7 @@ export default function RecipeDetailPage() {
                   id="category"
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                 >
                   <option value="">Select a category</option>
                   <option value="Breakfast">Breakfast</option>
@@ -432,7 +432,7 @@ export default function RecipeDetailPage() {
                     value={editOwner}
                     onChange={(e) => setEditOwner(e.target.value)}
                     placeholder="e.g., Grandma, Mom"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   />
                   <p className="text-xs text-gray-500 mt-1">Who owns or created this recipe (optional)</p>
                 </div>
@@ -447,7 +447,7 @@ export default function RecipeDetailPage() {
                     value={editUploadedBy}
                     onChange={(e) => setEditUploadedBy(e.target.value)}
                     placeholder="e.g., Your name"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   />
                   <p className="text-xs text-gray-500 mt-1">Who added this recipe to the app (optional)</p>
                 </div>
@@ -462,7 +462,7 @@ export default function RecipeDetailPage() {
                 value={editIngredientsText}
                 onChange={(e) => setEditIngredientsText(e.target.value)}
                 rows={8}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-mono text-sm"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-mono text-sm text-gray-900 placeholder:text-gray-400"
               />
             </div>
 
@@ -474,7 +474,7 @@ export default function RecipeDetailPage() {
                 value={editInstructionsText}
                 onChange={(e) => setEditInstructionsText(e.target.value)}
                 rows={10}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-mono text-sm"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-mono text-sm text-gray-900 placeholder:text-gray-400"
               />
             </div>
 

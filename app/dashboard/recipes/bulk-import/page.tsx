@@ -120,7 +120,7 @@ export default function BulkImportPage() {
           onChange={(e) => setUrls(e.target.value)}
           placeholder="https://example.com/recipe1&#10;https://example.com/recipe2&#10;https://example.com/recipe3"
           rows={12}
-          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent font-mono text-sm transition-shadow"
+          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent font-mono text-sm transition-shadow text-gray-900 placeholder:text-gray-400"
           disabled={loading}
         />
         <div className="mt-3 flex items-center justify-between">
