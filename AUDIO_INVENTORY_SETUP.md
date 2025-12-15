@@ -60,7 +60,7 @@ npm run dev
 
 1. Go to **Dashboard → Inventory**
 2. Click the **"Audio Upload"** button (microphone icon)
-3. Upload an audio file (MP3, WAV, M4A, WebM - max 25MB)
+3. Upload an audio file (MP3, WAV, M4A, WebM - max 10MB, ~5 minutes)
 4. Wait for:
    - **Transcription** (Whisper converts speech to text)
    - **Parsing** (Claude extracts structured inventory data)
@@ -74,7 +74,7 @@ npm run dev
 - M4A
 - WebM
 - OGG
-- Max file size: 25MB
+- Max file size: 10MB (~5 minutes of audio)
 
 ## Tips for Best Results
 
@@ -112,7 +112,7 @@ The AI will automatically categorize items:
 - Convert other formats using online converters
 
 ### "File too large" error
-- Max size is 25MB
+- Max size is 10MB (~5 minutes of audio)
 - Compress audio or split into shorter recordings
 
 ### Low confidence items

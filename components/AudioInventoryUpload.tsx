@@ -144,7 +144,7 @@ export default function AudioInventoryUpload({ familyId, onItemsProcessed }: Aud
                 {audioFile ? audioFile.name : 'Click to select audio file'}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                Supported: MP3, WAV, M4A, WebM (max 25MB)
+                Supported: MP3, WAV, M4A, WebM (max 10MB, ~5 minutes)
               </p>
             </label>
           </div>
