@@ -23,7 +23,7 @@ Add these to your `.env.local` file:
 
 ```env
 # OpenAI API (for Whisper audio transcription)
-OPENAI_API_KEY=sk-your-openai-api-key-here
+OpenAI_Whisper=sk-your-openai-api-key-here
 
 # Anthropic API (for Claude parsing) - you likely already have this
 ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
@@ -104,7 +104,7 @@ The AI will automatically categorize items:
 ## Troubleshooting
 
 ### "No API key" error
-- Make sure `OPENAI_API_KEY` is in your `.env.local`
+- Make sure `OpenAI_Whisper` is in your `.env.local`
 - Restart the dev server after adding the key
 
 ### "Invalid file type" error
