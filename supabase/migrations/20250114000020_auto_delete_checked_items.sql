@@ -31,21 +31,28 @@ BEGIN
 END;
 $$;
 
--- Create a cron job to run the cleanup function daily at 2 AM
--- Note: This requires pg_cron extension to be enabled
-SELECT cron.schedule(
-  'delete-old-checked-grocery-items',
-  '0 2 * * *',  -- Run at 2:00 AM every day
-  $$SELECT delete_old_checked_grocery_items();$$
-);
-
 -- Grant execute permission on the function
 GRANT EXECUTE ON FUNCTION delete_old_checked_grocery_items() TO authenticated;
 
--- Verification
+-- Try to create a cron job if pg_cron extension is available
+-- If not available, the function can still be called manually or via external cron
 DO $$
 BEGIN
+  -- Try to schedule with pg_cron if available
+  BEGIN
+    PERFORM cron.schedule(
+      'delete-old-checked-grocery-items',
+      '0 2 * * *',  -- Run at 2:00 AM every day
+      $$SELECT delete_old_checked_grocery_items();$$
+    );
+    RAISE NOTICE 'Cron job scheduled successfully';
+  EXCEPTION
+    WHEN undefined_table OR invalid_schema_name THEN
+      RAISE NOTICE 'pg_cron extension not available - auto-deletion function created but not scheduled';
+      RAISE NOTICE 'You can enable pg_cron in Supabase dashboard under Database > Extensions';
+      RAISE NOTICE 'Or call delete_old_checked_grocery_items() manually/via external cron';
+  END;
+
   RAISE NOTICE 'checked_at column added to grocery_list_items';
-  RAISE NOTICE 'Auto-deletion function created and scheduled to run daily at 2 AM';
-  RAISE NOTICE 'Checked items older than 7 days will be automatically deleted';
+  RAISE NOTICE 'Function delete_old_checked_grocery_items() is available to delete items older than 7 days';
 END $$;
