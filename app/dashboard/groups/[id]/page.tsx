@@ -33,6 +33,8 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
     setError(null)
 
     try {
+      console.log('Loading group with ID:', params.id)
+
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         setError('You must be logged in')
@@ -41,12 +43,23 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
       }
       setCurrentUserId(user.id)
 
+      // Validate params.id
+      if (!params.id || params.id === 'undefined') {
+        console.error('Invalid group ID:', params.id)
+        setError('Invalid group ID')
+        setLoading(false)
+        return
+      }
+
       // Load group details
+      console.log('Querying umbrella_groups with id:', params.id)
       const { data: groupData, error: groupError } = await supabase
         .from('umbrella_groups')
         .select('*')
         .eq('id', params.id)
         .single()
+
+      console.log('Group query result:', { groupData, groupError })
 
       if (groupError) {
         console.error('Error loading group:', groupError)
