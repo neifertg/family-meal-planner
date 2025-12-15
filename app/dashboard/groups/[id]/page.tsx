@@ -87,7 +87,7 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
         .from('umbrella_group_memberships')
         .select(`
           *,
-          user:users (
+          users!umbrella_group_memberships_user_id_fkey (
             id,
             email,
             display_name,
@@ -102,7 +102,12 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
       if (membersError) {
         console.error('Error loading members:', membersError)
       } else if (membersData) {
-        setMembers(membersData as unknown as MemberWithUser[])
+        // Map the foreign key result to the expected structure
+        const transformedMembers = membersData.map((m: any) => ({
+          ...m,
+          user: m.users
+        }))
+        setMembers(transformedMembers as MemberWithUser[])
       }
     } catch (err) {
       console.error('Error:', err)
