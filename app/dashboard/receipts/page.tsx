@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import ReceiptScanner from '@/components/ReceiptScanner'
+import { ExtractedReceipt } from '@/lib/receiptScanner/types'
 
 export default function ReceiptsPage() {
   const [familyId, setFamilyId] = useState<string | null>(null)
@@ -13,6 +15,7 @@ export default function ReceiptsPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date())
   const [isEditingBudget, setIsEditingBudget] = useState(false)
   const [budgetInput, setBudgetInput] = useState('')
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false)
 
   const supabase = createClient()
 
@@ -168,6 +171,21 @@ export default function ReceiptsPage() {
     setBudgetInput('')
   }
 
+  const handleReceiptProcessed = async (receipt: ExtractedReceipt, applyToBudget: boolean) => {
+    if (!familyId) return
+
+    try {
+      // The receipt scanner already handles saving to the database
+      // Just reload the budget data to show the new receipt
+      if (applyToBudget) {
+        await loadBudgetData()
+      }
+      setShowReceiptScanner(false)
+    } catch (error) {
+      console.error('Error processing receipt:', error)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -179,12 +197,23 @@ export default function ReceiptsPage() {
             </h1>
             <p className="text-gray-600 mt-2">Track your monthly grocery spending</p>
           </div>
-          <Link
-            href="/dashboard"
-            className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700"
-          >
-            ← Back to Dashboard
-          </Link>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowReceiptScanner(true)}
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium shadow-md hover:shadow-lg flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Scan Receipt
+            </button>
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700"
+            >
+              ← Back to Dashboard
+            </Link>
+          </div>
         </div>
 
         {/* Month Selector */}
@@ -389,6 +418,31 @@ export default function ReceiptsPage() {
             </div>
           )}
         </div>
+
+        {/* Receipt Scanner Modal */}
+        {showReceiptScanner && familyId && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Scan Receipt</h2>
+                <button
+                  onClick={() => setShowReceiptScanner(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6">
+                <ReceiptScanner
+                  familyId={familyId}
+                  onReceiptProcessed={handleReceiptProcessed}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

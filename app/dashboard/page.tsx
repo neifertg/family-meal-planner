@@ -3,6 +3,7 @@ import Link from 'next/link'
 import BudgetTracker from '@/components/BudgetTracker'
 import SeasonalProduceDialog from '@/components/SeasonalProduceDialog'
 import RecentActivity from '@/components/RecentActivity'
+import MealConfirmationNotification from '@/components/MealConfirmationNotification'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -58,6 +59,23 @@ export default async function DashboardPage() {
     .order('expiration_date', { ascending: true })
     .limit(5)
 
+  // Get yesterday's meals for confirmation notification
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayDate = yesterday.toISOString().split('T')[0]
+
+  const { data: yesterdayMeals } = await supabase
+    .from('meal_plans')
+    .select(`
+      *,
+      recipes (
+        id,
+        name
+      )
+    `)
+    .eq('planned_date', yesterdayDate)
+    .order('meal_type', { ascending: true })
+
   return (
     <div className="space-y-6">
       {/* Hero Section */}
@@ -67,6 +85,14 @@ export default async function DashboardPage() {
         </h1>
         <p className="text-blue-100">Here's what's happening with your meal planning</p>
       </div>
+
+      {/* Meal Confirmation Notification */}
+      {yesterdayMeals && yesterdayMeals.length > 0 && family?.id && (
+        <MealConfirmationNotification
+          yesterdayMeals={yesterdayMeals as any}
+          familyId={family.id}
+        />
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
