@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import RecipeRating from '@/components/RecipeRating'
+import SeasonalProduceDialog from '@/components/SeasonalProduceDialog'
 
 type Recipe = {
   id: string
@@ -438,6 +439,9 @@ export default function CalendarPage() {
           </button>
         </div>
       </div>
+
+      {/* Seasonal Produce */}
+      <SeasonalProduceDialog />
 
       {/* Calendar Grid */}
       {loading ? (
