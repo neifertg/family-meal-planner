@@ -27,6 +27,165 @@ type Invitation = {
   }
 }
 
+type UmbrellaGroup = {
+  id: string
+  name: string
+  description: string | null
+  logo_url: string | null
+  privacy_level: string
+  created_at: string
+  membership_role?: string
+  member_count?: number
+}
+
+function MyGroupsSection() {
+  const [groups, setGroups] = useState<UmbrellaGroup[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+
+  useEffect(() => {
+    loadGroups()
+  }, [])
+
+  const loadGroups = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Get user's group memberships
+      const { data: memberships } = await supabase
+        .from('umbrella_group_memberships')
+        .select(`
+          role,
+          umbrella_group_id,
+          umbrella_groups (
+            id,
+            name,
+            description,
+            logo_url,
+            privacy_level,
+            created_at
+          )
+        `)
+        .eq('user_id', user.id)
+
+      if (memberships) {
+        const groupsWithRole = memberships.map((m: any) => ({
+          ...m.umbrella_groups,
+          membership_role: m.role
+        }))
+        setGroups(groupsWithRole)
+      }
+    } catch (error) {
+      console.error('Error loading groups:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="mt-6 bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-3 text-gray-600">Loading groups...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-6 bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+      <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">My Groups</h2>
+            <p className="text-sm text-gray-600 mt-1">Manage your family groups</p>
+          </div>
+          <Link
+            href="/dashboard/groups/new"
+            className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium shadow-md hover:shadow-lg"
+          >
+            Create Group
+          </Link>
+        </div>
+      </div>
+
+      <div className="p-6">
+        {groups.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Groups Yet</h3>
+            <p className="text-gray-600 mb-4">Create or join a group to start sharing recipes with family</p>
+            <Link
+              href="/dashboard/groups/new"
+              className="inline-block px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium"
+            >
+              Create Your First Group
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {groups.map((group) => (
+              <Link
+                key={group.id}
+                href={`/dashboard/groups/${group.id}`}
+                className="block border border-gray-200 rounded-lg p-4 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all"
+              >
+                <div className="flex items-center gap-4">
+                  {/* Group Logo */}
+                  {group.logo_url ? (
+                    <img
+                      src={group.logo_url}
+                      alt={group.name}
+                      className="w-16 h-16 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center">
+                      <span className="text-white text-2xl font-bold">
+                        {group.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Group Info */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-900">{group.name}</h3>
+                      {group.membership_role === 'admin' && (
+                        <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full">
+                          Admin
+                        </span>
+                      )}
+                    </div>
+                    {group.description && (
+                      <p className="text-sm text-gray-600 mt-1">{group.description}</p>
+                    )}
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                      <span className="capitalize">{group.privacy_level}</span>
+                      <span>•</span>
+                      <span>Joined {new Date(group.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Arrow */}
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function AccountPage() {
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
@@ -383,36 +542,8 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* Quick Links */}
-        <div className="mt-6 bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Links</h3>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Link
-              href="/dashboard/groups"
-              className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-all"
-            >
-              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <div>
-                <div className="font-semibold text-gray-900">My Groups</div>
-                <div className="text-xs text-gray-500">Manage your groups</div>
-              </div>
-            </Link>
-            <Link
-              href="/dashboard/groups/new"
-              className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-all"
-            >
-              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <div>
-                <div className="font-semibold text-gray-900">Create Group</div>
-                <div className="text-xs text-gray-500">Start a new group</div>
-              </div>
-            </Link>
-          </div>
-        </div>
+        {/* My Groups */}
+        <MyGroupsSection />
       </div>
     </div>
   )
