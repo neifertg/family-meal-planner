@@ -18,6 +18,12 @@ type Recipe = {
   estimated_cost_usd: number | null
   cost_per_serving_usd: number | null
   created_at: string
+  shared_groups?: Array<{
+    umbrella_group_id: string
+    umbrella_groups: {
+      name: string
+    }
+  }>
 }
 
 export default function RecipesPage() {
@@ -53,7 +59,10 @@ export default function RecipesPage() {
           .from('recipes')
           .select(`
             *,
-            recipe_umbrella_group_shares!inner(umbrella_group_id)
+            shared_groups:recipe_umbrella_group_shares!inner(
+              umbrella_group_id,
+              umbrella_groups(name)
+            )
           `)
           .eq('recipe_umbrella_group_shares.umbrella_group_id', selectedGroupId)
           .order('created_at', { ascending: false })
@@ -74,7 +83,10 @@ export default function RecipesPage() {
             .from('recipes')
             .select(`
               *,
-              recipe_umbrella_group_shares!inner(umbrella_group_id)
+              shared_groups:recipe_umbrella_group_shares!inner(
+                umbrella_group_id,
+                umbrella_groups(name)
+              )
             `)
             .in('recipe_umbrella_group_shares.umbrella_group_id', groupIds)
             .order('created_at', { ascending: false })
@@ -82,10 +94,23 @@ export default function RecipesPage() {
           if (error) throw error
 
           // Remove duplicates (recipes shared with multiple groups)
-          const uniqueRecipes = Array.from(
-            new Map(data?.map(r => [r.id, r])).values()
-          )
+          // and aggregate shared_groups for each recipe
+          const recipeMap = new Map()
+          data?.forEach((recipe: any) => {
+            if (!recipeMap.has(recipe.id)) {
+              recipeMap.set(recipe.id, { ...recipe, shared_groups: [] })
+            }
+            const existingRecipe = recipeMap.get(recipe.id)
+            if (recipe.shared_groups && recipe.shared_groups.length > 0) {
+              recipe.shared_groups.forEach((group: any) => {
+                if (!existingRecipe.shared_groups.some((g: any) => g.umbrella_group_id === group.umbrella_group_id)) {
+                  existingRecipe.shared_groups.push(group)
+                }
+              })
+            }
+          })
 
+          const uniqueRecipes = Array.from(recipeMap.values())
           setRecipes(uniqueRecipes || [])
         } else {
           // No groups yet, show empty
@@ -351,6 +376,28 @@ export default function RecipesPage() {
                       </span>
                     )}
                   </div>
+
+                  {/* Group Badges */}
+                  {recipe.shared_groups && recipe.shared_groups.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {recipe.shared_groups.slice(0, 2).map((share, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium border border-indigo-200"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                          {share.umbrella_groups.name}
+                        </span>
+                      ))}
+                      {recipe.shared_groups.length > 2 && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                          +{recipe.shared_groups.length - 2} more
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Cost Badge */}
                   {recipe.estimated_cost_usd && (
