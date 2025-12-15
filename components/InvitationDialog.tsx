@@ -203,7 +203,7 @@ export default function InvitationDialog() {
 
           <div className="p-4 bg-gray-50 text-center">
             <p className="text-xs text-gray-500">
-              These invitations will expire in 7 days
+              These invitations will expire in 30 days
             </p>
           </div>
         </div>
