@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import BudgetTracker from '@/components/BudgetTracker'
 import SeasonalProduceDialog from '@/components/SeasonalProduceDialog'
+import RecentActivity from '@/components/RecentActivity'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -247,6 +248,9 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Recent Activity */}
+      <RecentActivity />
 
       {/* Quick Actions */}
       <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
