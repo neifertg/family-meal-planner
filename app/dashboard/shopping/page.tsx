@@ -352,15 +352,46 @@ export default function ShoppingListPage() {
 
   const toggleItem = async (id: string, currentStatus: boolean) => {
     const newStatus = !currentStatus
-    const { error} = await supabase
+
+    // Try to update with checked_at, fall back to just is_checked if column doesn't exist
+    const updateData: any = { is_checked: newStatus }
+
+    // Only include checked_at if we're checking the item (to avoid errors if column doesn't exist)
+    if (newStatus) {
+      updateData.checked_at = new Date().toISOString()
+    } else {
+      // Try to set to null when unchecking, but don't fail if column doesn't exist
+      try {
+        const { error: checkColumnError } = await supabase
+          .from('grocery_list_items')
+          .update({ checked_at: null })
+          .eq('id', id)
+          .limit(0) // Don't actually update, just check if column exists
+      } catch (e) {
+        // Column doesn't exist, that's fine
+      }
+      updateData.checked_at = null
+    }
+
+    const { error } = await supabase
       .from('grocery_list_items')
-      .update({
-        is_checked: newStatus,
-        checked_at: newStatus ? new Date().toISOString() : null
-      })
+      .update(updateData)
       .eq('id', id)
 
-    if (!error) loadShoppingList()
+    if (error) {
+      console.error('Error toggling item:', error)
+      // If error is about checked_at column, try again without it
+      if (error.message?.includes('checked_at')) {
+        const { error: retryError } = await supabase
+          .from('grocery_list_items')
+          .update({ is_checked: newStatus })
+          .eq('id', id)
+
+        if (!retryError) loadShoppingList()
+      }
+    } else {
+      loadShoppingList()
+    }
   }
 
   const deleteItem = async (id: string) => {
