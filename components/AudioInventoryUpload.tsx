@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ParsedInventoryItem, AudioTranscriptionResponse, InventoryParseResponse } from '@/lib/audioInventory/types'
 
 interface AudioInventoryUploadProps {
@@ -9,13 +9,103 @@ interface AudioInventoryUploadProps {
 }
 
 export default function AudioInventoryUpload({ familyId, onItemsProcessed }: AudioInventoryUploadProps) {
+  const [mode, setMode] = useState<'record' | 'upload'>('record')
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
-  const [step, setStep] = useState<'upload' | 'transcribing' | 'parsing' | 'review'>('upload')
+  const [step, setStep] = useState<'input' | 'recording' | 'transcribing' | 'parsing' | 'review'>('input')
   const [transcript, setTranscript] = useState<string>('')
   const [parsedItems, setParsedItems] = useState<ParsedInventoryItem[]>([])
   const [editingItems, setEditingItems] = useState<ParsedInventoryItem[]>([])
   const [error, setError] = useState<string | null>(null)
+
+  // Recording state
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const MAX_RECORDING_TIME = 300 // 5 minutes in seconds
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop()
+      }
+    }
+  }, [])
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+      // Use webm for better browser compatibility
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+      const mediaRecorder = new MediaRecorder(stream, { mimeType })
+
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
+        setAudioBlob(audioBlob)
+
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop())
+
+        // Reset timer
+        if (timerRef.current) {
+          clearInterval(timerRef.current)
+          timerRef.current = null
+        }
+      }
+
+      mediaRecorder.start()
+      setIsRecording(true)
+      setRecordingTime(0)
+      setError(null)
+      setStep('recording')
+
+      // Start timer
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          const newTime = prev + 1
+          // Auto-stop at 5 minutes
+          if (newTime >= MAX_RECORDING_TIME) {
+            stopRecording()
+          }
+          return newTime
+        })
+      }, 1000)
+
+    } catch (err: any) {
+      console.error('Error starting recording:', err)
+      setError('Failed to access microphone. Please allow microphone permissions.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+      setStep('input')
+    }
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -25,14 +115,17 @@ export default function AudioInventoryUpload({ familyId, onItemsProcessed }: Aud
     }
   }
 
-  const handleUpload = async () => {
-    if (!audioFile) return
-
+  const processAudio = async (audio: File | Blob) => {
     setProcessing(true)
     setError(null)
     setStep('transcribing')
 
     try {
+      // Convert Blob to File if needed
+      const audioFile = audio instanceof File
+        ? audio
+        : new File([audio], 'recording.webm', { type: audio.type })
+
       // Step 1: Transcribe audio with Whisper
       const formData = new FormData()
       formData.append('audio', audioFile)
@@ -73,9 +166,21 @@ export default function AudioInventoryUpload({ familyId, onItemsProcessed }: Aud
     } catch (err: any) {
       console.error('Error processing audio:', err)
       setError(err.message || 'Failed to process audio file')
-      setStep('upload')
+      setStep('input')
     } finally {
       setProcessing(false)
+    }
+  }
+
+  const handleProcessRecording = () => {
+    if (audioBlob) {
+      processAudio(audioBlob)
+    }
+  }
+
+  const handleProcessFile = () => {
+    if (audioFile) {
+      processAudio(audioFile)
     }
   }
 
@@ -95,75 +200,171 @@ export default function AudioInventoryUpload({ familyId, onItemsProcessed }: Aud
 
   const handleReset = () => {
     setAudioFile(null)
+    setAudioBlob(null)
     setTranscript('')
     setParsedItems([])
     setEditingItems([])
     setError(null)
-    setStep('upload')
+    setRecordingTime(0)
+    setStep('input')
   }
 
   return (
     <div className="space-y-6">
-      {/* Upload Step */}
-      {step === 'upload' && (
+      {/* Input Step - Record or Upload */}
+      {step === 'input' && (
         <div>
           <div className="mb-4">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Upload Audio Inventory</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Audio Inventory Upload</h3>
             <p className="text-sm text-gray-600 mb-4">
               Record or upload an audio file listing your inventory items. Speak naturally like:
               &quot;Two pounds of chicken breast expires January 20th, three cans of black beans, half gallon of milk good until next Tuesday&quot;
             </p>
           </div>
 
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <input
-              type="file"
-              accept="audio/*"
-              onChange={handleFileSelect}
-              className="hidden"
-              id="audio-upload"
-            />
-            <label
-              htmlFor="audio-upload"
-              className="cursor-pointer block"
+          {/* Mode Tabs */}
+          <div className="flex gap-2 mb-4 border-b border-gray-200">
+            <button
+              onClick={() => setMode('record')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                mode === 'record'
+                  ? 'text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
             >
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400 mb-3"
-                stroke="currentColor"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                />
-              </svg>
-              <p className="text-sm text-gray-600">
-                {audioFile ? audioFile.name : 'Click to select audio file'}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Supported: MP3, WAV, M4A, WebM (max 10MB, ~5 minutes)
-              </p>
-            </label>
+              Record Audio
+            </button>
+            <button
+              onClick={() => setMode('upload')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                mode === 'upload'
+                  ? 'text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Upload File
+            </button>
           </div>
 
-          {audioFile && (
-            <div className="mt-4 flex gap-3">
-              <button
-                onClick={handleUpload}
-                disabled={processing}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {processing ? 'Processing...' : 'Process Audio'}
-              </button>
-              <button
-                onClick={() => setAudioFile(null)}
-                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-              >
-                Clear
-              </button>
+          {/* Record Mode */}
+          {mode === 'record' && (
+            <div>
+              {!audioBlob ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+                  <div className="flex justify-center mb-4">
+                    <div className="relative">
+                      <svg
+                        className="h-16 w-16 text-indigo-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 mb-4">Ready to record your inventory</p>
+                  <button
+                    onClick={startRecording}
+                    className="px-8 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-lg hover:from-red-700 hover:to-pink-700 transition-all font-medium shadow-md hover:shadow-lg inline-flex items-center gap-2"
+                  >
+                    <div className="w-3 h-3 bg-white rounded-full"></div>
+                    Start Recording
+                  </button>
+                  <p className="text-xs text-gray-500 mt-3">Maximum 5 minutes</p>
+                </div>
+              ) : (
+                <div className="border-2 border-green-300 bg-green-50 rounded-lg p-8 text-center">
+                  <svg
+                    className="mx-auto h-12 w-12 text-green-600 mb-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <p className="text-sm font-medium text-gray-900 mb-1">Recording Complete</p>
+                  <p className="text-sm text-gray-600 mb-4">Duration: {formatTime(recordingTime)}</p>
+                  <div className="flex gap-3 justify-center">
+                    <button
+                      onClick={handleProcessRecording}
+                      className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium shadow-md hover:shadow-lg"
+                    >
+                      Process Recording
+                    </button>
+                    <button
+                      onClick={() => setAudioBlob(null)}
+                      className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                    >
+                      Re-record
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Upload Mode */}
+          {mode === 'upload' && (
+            <div>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="audio-upload"
+                />
+                <label htmlFor="audio-upload" className="cursor-pointer block">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400 mb-3"
+                    stroke="currentColor"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
+                  </svg>
+                  <p className="text-sm text-gray-600">
+                    {audioFile ? audioFile.name : 'Click to select audio file'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Supported: MP3, WAV, M4A, WebM (max 10MB, ~5 minutes)
+                  </p>
+                </label>
+              </div>
+
+              {audioFile && (
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={handleProcessFile}
+                    disabled={processing}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {processing ? 'Processing...' : 'Process Audio'}
+                  </button>
+                  <button
+                    onClick={() => setAudioFile(null)}
+                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -172,6 +373,30 @@ export default function AudioInventoryUpload({ familyId, onItemsProcessed }: Aud
               <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Recording Step */}
+      {step === 'recording' && (
+        <div className="text-center py-12">
+          <div className="relative inline-block mb-6">
+            <div className="absolute inset-0 bg-red-600 rounded-full animate-ping opacity-75"></div>
+            <div className="relative w-20 h-20 bg-red-600 rounded-full flex items-center justify-center">
+              <div className="w-6 h-6 bg-white rounded-full"></div>
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">Recording...</h3>
+          <p className="text-3xl font-mono text-indigo-600 mb-4">{formatTime(recordingTime)}</p>
+          <p className="text-sm text-gray-600 mb-6">Speak clearly and list your inventory items</p>
+          <button
+            onClick={stopRecording}
+            className="px-8 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium shadow-md hover:shadow-lg"
+          >
+            Stop Recording
+          </button>
+          <p className="text-xs text-gray-500 mt-3">
+            Maximum time: {formatTime(MAX_RECORDING_TIME)}
+          </p>
         </div>
       )}
 
