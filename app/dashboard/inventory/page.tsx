@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import ReceiptScanner from '@/components/ReceiptScanner'
 import { ExtractedReceipt } from '@/lib/receiptScanner/types'
 import { estimateExpirationDate } from '@/lib/receiptScanner/expirationEstimator'
+import AudioInventoryUpload from '@/components/AudioInventoryUpload'
+import { ParsedInventoryItem } from '@/lib/audioInventory/types'
 
 type InventoryItem = {
   id: string
@@ -26,6 +28,7 @@ export default function InventoryPage() {
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showReceiptScanner, setShowReceiptScanner] = useState(false)
+  const [showAudioUpload, setShowAudioUpload] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
   const [editingExpirationId, setEditingExpirationId] = useState<string | null>(null)
 
@@ -178,6 +181,39 @@ export default function InventoryPage() {
     } else {
       console.error('Error updating expiration date:', error)
       alert(`Failed to update expiration date: ${error.message}`)
+    }
+  }
+
+  // Handle audio inventory items
+  const handleAudioItemsProcessed = async (parsedItems: ParsedInventoryItem[]) => {
+    if (!familyId) return
+
+    try {
+      // Bulk insert all items
+      const inventoryItems = parsedItems.map(item => ({
+        family_id: familyId,
+        name: item.name,
+        category: item.category,
+        quantity_level: 'medium' as QuantityLevel, // Default to medium
+        expiration_date: item.expiration_date,
+        purchase_date: new Date().toISOString().split('T')[0]
+      }))
+
+      const { error } = await supabase
+        .from('inventory_items')
+        .insert(inventoryItems)
+
+      if (error) {
+        console.error('Error adding inventory items:', error)
+        alert(`Failed to add items: ${error.message}`)
+      } else {
+        alert(`Successfully added ${inventoryItems.length} items to inventory!`)
+        setShowAudioUpload(false)
+        loadInventory()
+      }
+    } catch (error: any) {
+      console.error('Error processing audio items:', error)
+      alert(`Error: ${error.message}`)
     }
   }
 
@@ -378,24 +414,33 @@ export default function InventoryPage() {
               Track your ingredients and reduce food waste
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setShowAudioUpload(true)}
+              className="bg-white hover:bg-purple-50 text-purple-700 font-semibold py-2.5 px-4 md:px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+              <span className="hidden sm:inline">Audio Upload</span>
+            </button>
             <button
               onClick={() => setShowReceiptScanner(true)}
-              className="bg-white hover:bg-purple-50 text-purple-700 font-semibold py-2.5 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
+              className="bg-white hover:bg-purple-50 text-purple-700 font-semibold py-2.5 px-4 md:px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Scan Receipt
+              <span className="hidden sm:inline">Scan Receipt</span>
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-white hover:bg-purple-50 text-purple-700 font-semibold py-2.5 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
+              className="bg-white hover:bg-purple-50 text-purple-700 font-semibold py-2.5 px-4 md:px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Add Item
+              <span className="hidden sm:inline">Add Item</span>
             </button>
           </div>
         </div>
@@ -696,6 +741,31 @@ export default function InventoryPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Audio Upload Modal */}
+      {showAudioUpload && familyId && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <h2 className="text-2xl font-bold text-gray-900">Audio Inventory Upload</h2>
+              <button
+                onClick={() => setShowAudioUpload(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <AudioInventoryUpload
+                familyId={familyId}
+                onItemsProcessed={handleAudioItemsProcessed}
+              />
+            </div>
           </div>
         </div>
       )}
