@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/Sidebar'
 import MobileBottomNav from '@/components/MobileBottomNav'
+import InvitationDialog from '@/components/InvitationDialog'
 
 export default async function DashboardLayout({
   children,
@@ -31,6 +32,8 @@ export default async function DashboardLayout({
       </div>
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
+      {/* Invitation Dialog - Shows on login if user has pending invitations */}
+      <InvitationDialog />
     </div>
   )
 }

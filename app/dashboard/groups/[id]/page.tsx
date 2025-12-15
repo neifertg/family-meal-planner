@@ -18,6 +18,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [groupId, setGroupId] = useState<string | null>(null)
@@ -196,6 +197,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           umbrella_group_id: groupId,
           invited_by_user_id: currentUserId,
           email: inviteEmail.trim().toLowerCase(),
+          role: inviteRole,
           status: 'pending',
           expires_at: expiresAt.toISOString()
         })
@@ -204,8 +206,9 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
       // Success
       setInviteEmail('')
+      setInviteRole('member')
       setShowInviteModal(false)
-      alert(`Invitation sent to ${inviteEmail}`)
+      alert(`Invitation sent to ${inviteEmail} as ${inviteRole}`)
     } catch (err) {
       console.error('Error sending invitation:', err)
       setInviteError('Failed to send invitation. The user may already be a member or invited.')
@@ -431,7 +434,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 )}
 
-                <div className="mb-6">
+                <div className="mb-4">
                   <label htmlFor="inviteEmail" className="block text-sm font-medium text-gray-700 mb-2">
                     Email Address
                   </label>
@@ -445,8 +448,24 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                     required
                     disabled={inviteLoading}
                   />
+                </div>
+
+                <div className="mb-6">
+                  <label htmlFor="inviteRole" className="block text-sm font-medium text-gray-700 mb-2">
+                    Role
+                  </label>
+                  <select
+                    id="inviteRole"
+                    value={inviteRole}
+                    onChange={(e) => setInviteRole(e.target.value as 'member' | 'admin')}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    disabled={inviteLoading}
+                  >
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                  </select>
                   <p className="mt-2 text-xs text-gray-500">
-                    An invitation link will be sent to this email address
+                    Admins can invite members, edit the group, and manage permissions
                   </p>
                 </div>
 
