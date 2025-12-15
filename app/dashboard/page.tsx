@@ -1,16 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import BudgetTracker from '@/components/BudgetTracker'
-import SeasonalProduceDialog from '@/components/SeasonalProduceDialog'
-import RecentActivity from '@/components/RecentActivity'
 import MealConfirmationNotification from '@/components/MealConfirmationNotification'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
 
   // Get family data
   const { data: family } = await supabase
@@ -67,10 +62,28 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-xl p-6 md:p-8 text-white shadow-lg">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">
-          Welcome back{family ? `, ${family.name}` : ''}!
-        </h1>
-        <p className="text-blue-100">Here's what's happening with your meal planning</p>
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">
+              Welcome back{family ? `, ${family.name}` : ''}!
+            </h1>
+            <p className="text-blue-100">Here's what's happening with your meal planning</p>
+          </div>
+          {family?.monthly_budget && (
+            <Link
+              href="/dashboard/receipts"
+              className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg px-4 py-3 transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="text-left">
+                <div className="text-xs text-white/80">Monthly Budget</div>
+                <div className="text-lg font-bold">${family.monthly_budget}</div>
+              </div>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Meal Confirmation Notification */}
@@ -82,58 +95,46 @@ export default async function DashboardPage() {
       )}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Link
-          href="/dashboard/shopping"
-          className="group flex flex-col items-center justify-center p-5 bg-gradient-to-br from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+          href="/dashboard/calendar"
+          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
         >
-          <svg className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          <svg className="w-8 h-8 text-white mb-3 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <span className="text-sm font-semibold text-white text-center">Shopping List</span>
+          <span className="text-base font-semibold text-white text-center">Plan Week</span>
         </Link>
 
         <Link
-          href="/dashboard/calendar"
-          className="group flex flex-col items-center justify-center p-5 bg-gradient-to-br from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+          href="/dashboard/shopping"
+          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
         >
-          <svg className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          <svg className="w-8 h-8 text-white mb-3 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
-          <span className="text-sm font-semibold text-white text-center">Plan Week</span>
+          <span className="text-base font-semibold text-white text-center">Shopping List</span>
         </Link>
 
         <Link
           href="/dashboard/receipts"
-          className="group flex flex-col items-center justify-center p-5 bg-gradient-to-br from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
         >
-          <svg className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-8 h-8 text-white mb-3 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <span className="text-sm font-semibold text-white text-center">Scan a Receipt</span>
+          <span className="text-base font-semibold text-white text-center">Scan Receipt</span>
         </Link>
 
         <Link
           href="/dashboard/inventory"
-          className="group flex flex-col items-center justify-center p-5 bg-gradient-to-br from-purple-400 to-indigo-500 hover:from-purple-500 hover:to-indigo-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-purple-400 to-indigo-500 hover:from-purple-500 hover:to-indigo-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
         >
-          <svg className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-8 h-8 text-white mb-3 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
-          <span className="text-sm font-semibold text-white text-center">Inventory</span>
+          <span className="text-base font-semibold text-white text-center">Inventory</span>
         </Link>
-
-        <Link
-          href="/dashboard/recipes"
-          className="group flex flex-col items-center justify-center p-5 bg-gradient-to-br from-orange-400 to-pink-500 hover:from-orange-500 hover:to-pink-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
-        >
-          <svg className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-          <span className="text-sm font-semibold text-white text-center">Recipes</span>
-        </Link>
-
-        <SeasonalProduceDialog />
       </div>
 
       {/* Budget Tracker */}
@@ -277,9 +278,6 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
-
-      {/* Recent Activity */}
-      <RecentActivity />
     </div>
   )
 }
