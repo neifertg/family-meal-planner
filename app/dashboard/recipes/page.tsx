@@ -70,52 +70,31 @@ export default function RecipesPage() {
         if (error) throw error
         setRecipes(data || [])
       } else {
-        // Show all recipes from all groups the user belongs to
-        const { data: memberships } = await supabase
-          .from('umbrella_group_memberships')
-          .select('umbrella_group_id')
-          .eq('user_id', user.id)
+        // Show all public recipes
+        const { data, error } = await supabase
+          .from('recipes')
+          .select(`
+            *,
+            shared_groups:recipe_umbrella_group_shares(
+              umbrella_group_id,
+              umbrella_groups(name)
+            )
+          `)
+          .eq('visibility', 'public')
+          .order('created_at', { ascending: false })
 
-        if (memberships && memberships.length > 0) {
-          const groupIds = memberships.map(m => m.umbrella_group_id)
+        if (error) throw error
 
-          const { data, error } = await supabase
-            .from('recipes')
-            .select(`
-              *,
-              shared_groups:recipe_umbrella_group_shares!inner(
-                umbrella_group_id,
-                umbrella_groups(name)
-              )
-            `)
-            .in('recipe_umbrella_group_shares.umbrella_group_id', groupIds)
-            .order('created_at', { ascending: false })
+        // Aggregate shared_groups for each recipe (remove duplicates if recipe is in multiple groups)
+        const recipeMap = new Map()
+        data?.forEach((recipe: any) => {
+          if (!recipeMap.has(recipe.id)) {
+            recipeMap.set(recipe.id, { ...recipe, shared_groups: recipe.shared_groups || [] })
+          }
+        })
 
-          if (error) throw error
-
-          // Remove duplicates (recipes shared with multiple groups)
-          // and aggregate shared_groups for each recipe
-          const recipeMap = new Map()
-          data?.forEach((recipe: any) => {
-            if (!recipeMap.has(recipe.id)) {
-              recipeMap.set(recipe.id, { ...recipe, shared_groups: [] })
-            }
-            const existingRecipe = recipeMap.get(recipe.id)
-            if (recipe.shared_groups && recipe.shared_groups.length > 0) {
-              recipe.shared_groups.forEach((group: any) => {
-                if (!existingRecipe.shared_groups.some((g: any) => g.umbrella_group_id === group.umbrella_group_id)) {
-                  existingRecipe.shared_groups.push(group)
-                }
-              })
-            }
-          })
-
-          const uniqueRecipes = Array.from(recipeMap.values())
-          setRecipes(uniqueRecipes || [])
-        } else {
-          // No groups yet, show empty
-          setRecipes([])
-        }
+        const uniqueRecipes = Array.from(recipeMap.values())
+        setRecipes(uniqueRecipes || [])
       }
     } catch (err: any) {
       console.error('Error loading recipes:', err)
@@ -288,7 +267,7 @@ export default function RecipesPage() {
             <p className="text-gray-600 mb-6">
               {selectedGroupId
                 ? "This group doesn't have any recipes shared yet."
-                : "Join or create an umbrella group to start sharing recipes with your extended family."}
+                : "No public recipes available yet. Create your first recipe to get started!"}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
