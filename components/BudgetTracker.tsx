@@ -105,14 +105,24 @@ export default function BudgetTracker({ familyId }: BudgetTrackerProps) {
   const remaining = (monthlyBudget || 0) - totalSpent
   const isOverBudget = remaining < 0
 
+  // Calculate days remaining in month
+  const now = new Date()
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const daysRemaining = Math.ceil((lastDayOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Monthly Budget</h3>
+    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="text-xl font-bold text-gray-900">Monthly Budget</h3>
+        </div>
         {!isEditingBudget && (
           <button
             onClick={() => setIsEditingBudget(true)}
-            className="text-sm text-blue-600 hover:text-blue-700"
+            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
           >
             Edit Budget
           </button>
@@ -173,16 +183,23 @@ export default function BudgetTracker({ familyId }: BudgetTrackerProps) {
                 </div>
               </div>
 
-              {/* Progress Bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>{percentUsed.toFixed(0)}% used</span>
+              {/* Progress Bar with Gradient */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-600 font-medium">{percentUsed.toFixed(0)}% used</span>
+                  <span className="text-gray-500">{daysRemaining} days left</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden shadow-inner">
                   <div
-                    className={`h-3 rounded-full transition-all duration-300 ${
-                      isOverBudget ? 'bg-red-600' : percentUsed > 80 ? 'bg-yellow-500' : 'bg-green-600'
-                    }`}
+                    className={`h-4 rounded-full transition-all duration-500 ${
+                      isOverBudget
+                        ? 'bg-gradient-to-r from-red-500 to-red-600'
+                        : percentUsed > 80
+                        ? 'bg-gradient-to-r from-yellow-400 to-orange-500'
+                        : percentUsed > 50
+                        ? 'bg-gradient-to-r from-green-400 to-emerald-500'
+                        : 'bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500'
+                    } ${!isOverBudget && percentUsed < 50 ? 'shadow-lg shadow-green-200' : ''}`}
                     style={{ width: `${Math.min(percentUsed, 100)}%` }}
                   ></div>
                 </div>
