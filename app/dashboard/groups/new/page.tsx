@@ -78,21 +78,24 @@ export default function NewGroupPage() {
         uploadedLogoUrl = publicUrl
       }
 
-      // Create the umbrella group
-      const { error: createError } = await supabase
-        .from('umbrella_groups')
-        .insert({
-          name: name.trim(),
-          description: description.trim() || null,
-          logo_url: uploadedLogoUrl,
-          privacy_level: privacyLevel,
-          created_by_user_id: user.id
+      // Create the umbrella group using RPC function to bypass RLS issues
+      const { data: groupData, error: createError } = await supabase
+        .rpc('create_umbrella_group', {
+          p_name: name.trim(),
+          p_description: description.trim() || null,
+          p_logo_url: uploadedLogoUrl,
+          p_privacy_level: privacyLevel
         })
-        .select()
-        .single()
 
       if (createError) {
         console.error('Error creating group:', createError)
+        setError(`Failed to create group: ${createError.message}`)
+        setLoading(false)
+        return
+      }
+
+      if (!groupData || groupData.length === 0) {
+        console.error('No group data returned')
         setError('Failed to create group. Please try again.')
         setLoading(false)
         return
