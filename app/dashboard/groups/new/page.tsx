@@ -85,7 +85,7 @@ export default function NewGroupPage() {
           p_description: description.trim() || null,
           p_logo_url: uploadedLogoUrl,
           p_privacy_level: privacyLevel
-        })
+        }) as { data: any[] | null; error: any }
 
       if (createError) {
         console.error('Error creating group:', createError)
@@ -101,8 +101,9 @@ export default function NewGroupPage() {
         return
       }
 
-      // Success! Redirect to the account page
-      router.push('/dashboard/account')
+      // Success! Redirect to the newly created group
+      const newGroup = groupData[0]
+      router.push(`/dashboard/groups/${newGroup.id}`)
     } catch (err) {
       console.error('Unexpected error:', err)
       setError('An unexpected error occurred. Please try again.')
