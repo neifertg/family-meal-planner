@@ -351,9 +351,13 @@ export default function ShoppingListPage() {
   }
 
   const toggleItem = async (id: string, currentStatus: boolean) => {
-    const { error } = await supabase
+    const newStatus = !currentStatus
+    const { error} = await supabase
       .from('grocery_list_items')
-      .update({ is_checked: !currentStatus })
+      .update({
+        is_checked: newStatus,
+        checked_at: newStatus ? new Date().toISOString() : null
+      })
       .eq('id', id)
 
     if (!error) loadShoppingList()
@@ -482,7 +486,10 @@ export default function ShoppingListPage() {
           if (similarity >= 0.75 && !shoppingItem.is_checked) {
             await supabase
               .from('grocery_list_items')
-              .update({ is_checked: true })
+              .update({
+                is_checked: true,
+                checked_at: new Date().toISOString()
+              })
               .eq('id', shoppingItem.id)
             shoppingListMatches++
             break
@@ -814,9 +821,12 @@ export default function ShoppingListPage() {
             {completedCount > 0 && (
               <button
                 onClick={clearCompleted}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors"
+                className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-semibold py-3 px-6 rounded-lg transition-colors inline-flex items-center gap-2"
               >
-                Clear Completed ({completedCount})
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete Crossed-Off Items ({completedCount})
               </button>
             )}
             <button
