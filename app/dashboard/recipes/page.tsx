@@ -51,8 +51,6 @@ export default function RecipesPage() {
         return
       }
 
-      let query
-
       if (selectedGroupId) {
         // Filter recipes by selected umbrella group
         const { data, error } = await supabase
@@ -70,7 +68,7 @@ export default function RecipesPage() {
         if (error) throw error
         setRecipes(data || [])
       } else {
-        // Show all public recipes
+        // Show all recipes
         const { data, error } = await supabase
           .from('recipes')
           .select(`
@@ -80,7 +78,6 @@ export default function RecipesPage() {
               umbrella_groups(name)
             )
           `)
-          .eq('visibility', 'public')
           .order('created_at', { ascending: false })
 
         if (error) throw error
@@ -266,8 +263,8 @@ export default function RecipesPage() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No recipes yet</h2>
             <p className="text-gray-600 mb-6">
               {selectedGroupId
-                ? "This group doesn't have any recipes shared yet."
-                : "No public recipes available yet. Create your first recipe to get started!"}
+                ? "This group doesn't have any recipes assigned yet."
+                : "No recipes available yet. Create your first recipe to get started!"}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
