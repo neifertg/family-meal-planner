@@ -98,7 +98,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Link
           href="/dashboard/calendar"
-          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
         >
           <svg className="w-8 h-8 text-white mb-3 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -108,7 +108,7 @@ export default async function DashboardPage() {
 
         <Link
           href="/dashboard/shopping"
-          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
         >
           <svg className="w-8 h-8 text-white mb-3 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -118,7 +118,7 @@ export default async function DashboardPage() {
 
         <Link
           href="/dashboard/receipts"
-          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
         >
           <svg className="w-8 h-8 text-white mb-3 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
 
         <Link
           href="/dashboard/inventory"
-          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-purple-400 to-indigo-500 hover:from-purple-500 hover:to-indigo-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+          className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
         >
           <svg className="w-8 h-8 text-white mb-3 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
