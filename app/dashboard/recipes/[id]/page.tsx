@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import RecipeRating from '@/components/RecipeRating'
+import ShareRecipeModal from '@/components/ShareRecipeModal'
+import UmbrellaGroupRecipeRating from '@/components/UmbrellaGroupRecipeRating'
 
 type Recipe = {
   id: string
@@ -20,6 +22,8 @@ type Recipe = {
   image_url: string | null
   cuisine: string | null
   category: string | null
+  owner?: string | null
+  uploaded_by?: string | null
   created_at: string
 }
 
@@ -31,6 +35,7 @@ export default function RecipeDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
 
   // Edit form state
   const [editName, setEditName] = useState('')
@@ -178,11 +183,9 @@ export default function RecipeDetailPage() {
         instructions,
       }
 
-      // @ts-expect-error - Supabase type inference issue with update
       const { data, error: updateError } = await supabase
         .from('recipes')
-        // @ts-expect-error - Supabase type inference issue with update
-        .update(updateData)
+        .update(updateData as any)
         .eq('id', recipe.id)
         .select()
         .single()
@@ -616,9 +619,18 @@ export default function RecipeDetailPage() {
                 </div>
               )}
 
+              {/* Umbrella Group Ratings */}
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Group Ratings</h2>
+                <UmbrellaGroupRecipeRating
+                  recipeId={recipe.id}
+                  recipeName={recipe.name}
+                />
+              </div>
+
               {/* Family Ratings */}
               <div className="mt-8 pt-6 border-t border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Family Ratings</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Household Ratings</h2>
                 <RecipeRating
                   recipeId={recipe.id}
                   recipeName={recipe.name}
@@ -626,10 +638,19 @@ export default function RecipeDetailPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="mt-8 flex gap-3">
+              <div className="mt-8 flex flex-wrap gap-3">
+                <button
+                  onClick={() => setShowShareModal(true)}
+                  className="flex-1 min-w-[200px] bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  Share with Groups
+                </button>
                 <button
                   onClick={startEditing}
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-rose-500 hover:from-purple-600 hover:to-rose-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                  className="flex-1 min-w-[200px] bg-gradient-to-r from-purple-500 to-rose-500 hover:from-purple-600 hover:to-rose-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
                 >
                   Edit Recipe
                 </button>
@@ -642,6 +663,16 @@ export default function RecipeDetailPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Share Modal */}
+        {recipe && (
+          <ShareRecipeModal
+            recipeId={recipe.id}
+            recipeName={recipe.name}
+            isOpen={showShareModal}
+            onClose={() => setShowShareModal(false)}
+          />
         )}
       </div>
     </div>
