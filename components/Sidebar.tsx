@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
+import InvitationBadge from './InvitationBadge'
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -132,6 +133,7 @@ export default function Sidebar() {
                 >
                   {item.icon}
                   <span>{item.label}</span>
+                  {item.href === '/dashboard/account' && <InvitationBadge />}
                 </Link>
               ))}
               <button
@@ -173,6 +175,7 @@ export default function Sidebar() {
                 {item.icon}
               </span>
               <span>{item.label}</span>
+              {item.href === '/dashboard/account' && <InvitationBadge />}
             </Link>
           ))}
         </nav>
