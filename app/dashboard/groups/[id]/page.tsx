@@ -10,7 +10,7 @@ type MemberWithUser = UmbrellaGroupMembership & {
   user: User
 }
 
-export default function GroupDetailPage({ params }: { params: { id: string } }) {
+export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [group, setGroup] = useState<UmbrellaGroupWithMembership | null>(null)
   const [members, setMembers] = useState<MemberWithUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,20 +20,31 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
+  const [groupId, setGroupId] = useState<string | null>(null)
 
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
-    loadGroupDetails()
-  }, [params.id])
+    params.then(({ id }) => {
+      setGroupId(id)
+    })
+  }, [params])
+
+  useEffect(() => {
+    if (groupId) {
+      loadGroupDetails()
+    }
+  }, [groupId])
 
   const loadGroupDetails = async () => {
+    if (!groupId) return
+
     setLoading(true)
     setError(null)
 
     try {
-      console.log('Loading group with ID:', params.id)
+      console.log('Loading group with ID:', groupId)
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -43,20 +54,12 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
       }
       setCurrentUserId(user.id)
 
-      // Validate params.id
-      if (!params.id || params.id === 'undefined') {
-        console.error('Invalid group ID:', params.id)
-        setError('Invalid group ID')
-        setLoading(false)
-        return
-      }
-
       // Load group details
-      console.log('Querying umbrella_groups with id:', params.id)
+      console.log('Querying umbrella_groups with id:', groupId)
       const { data: groupData, error: groupError } = await supabase
         .from('umbrella_groups')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', groupId)
         .single()
 
       console.log('Group query result:', { groupData, groupError })
@@ -72,7 +75,7 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
       const { data: membership } = await supabase
         .from('umbrella_group_memberships')
         .select('*')
-        .eq('umbrella_group_id', params.id)
+        .eq('umbrella_group_id', groupId)
         .eq('user_id', user.id)
         .single()
 
@@ -80,13 +83,13 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
       const { count: memberCount } = await supabase
         .from('umbrella_group_memberships')
         .select('*', { count: 'exact', head: true })
-        .eq('umbrella_group_id', params.id)
+        .eq('umbrella_group_id', groupId)
 
       // Get recipe count
       const { count: recipeCount } = await supabase
         .from('recipe_umbrella_group_shares')
         .select('*', { count: 'exact', head: true })
-        .eq('umbrella_group_id', params.id)
+        .eq('umbrella_group_id', groupId)
 
       setGroup({
         ...groupData,
@@ -109,7 +112,7 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
             updated_at
           )
         `)
-        .eq('umbrella_group_id', params.id)
+        .eq('umbrella_group_id', groupId)
         .order('joined_at', { ascending: true })
 
       if (membersError) {
@@ -190,7 +193,7 @@ export default function GroupDetailPage({ params }: { params: { id: string } }) 
       const { error } = await supabase
         .from('umbrella_group_invitations')
         .insert({
-          umbrella_group_id: params.id,
+          umbrella_group_id: groupId,
           invited_by_user_id: currentUserId,
           email: inviteEmail.trim().toLowerCase(),
           status: 'pending',
