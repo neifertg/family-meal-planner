@@ -353,6 +353,11 @@ export default function ShoppingListPage() {
   const toggleItem = async (id: string, currentStatus: boolean) => {
     const newStatus = !currentStatus
 
+    // Optimistic update - update UI immediately
+    setItems(items.map(item =>
+      item.id === id ? { ...item, is_checked: newStatus } : item
+    ))
+
     // Try to update with checked_at, fall back to just is_checked if column doesn't exist
     const updateData: any = { is_checked: newStatus }
 
@@ -360,16 +365,6 @@ export default function ShoppingListPage() {
     if (newStatus) {
       updateData.checked_at = new Date().toISOString()
     } else {
-      // Try to set to null when unchecking, but don't fail if column doesn't exist
-      try {
-        const { error: checkColumnError } = await supabase
-          .from('grocery_list_items')
-          .update({ checked_at: null })
-          .eq('id', id)
-          .limit(0) // Don't actually update, just check if column exists
-      } catch (e) {
-        // Column doesn't exist, that's fine
-      }
       updateData.checked_at = null
     }
 
@@ -387,20 +382,35 @@ export default function ShoppingListPage() {
           .update({ is_checked: newStatus })
           .eq('id', id)
 
-        if (!retryError) loadShoppingList()
+        if (retryError) {
+          // Revert optimistic update on error
+          setItems(items.map(item =>
+            item.id === id ? { ...item, is_checked: currentStatus } : item
+          ))
+        }
+      } else {
+        // Revert optimistic update on error
+        setItems(items.map(item =>
+          item.id === id ? { ...item, is_checked: currentStatus } : item
+        ))
       }
-    } else {
-      loadShoppingList()
     }
   }
 
   const deleteItem = async (id: string) => {
+    // Optimistic update - remove from UI immediately
+    setItems(items.filter(item => item.id !== id))
+
     const { error } = await supabase
       .from('grocery_list_items')
       .delete()
       .eq('id', id)
 
-    if (!error) loadShoppingList()
+    if (error) {
+      console.error('Error deleting item:', error)
+      // Reload on error to restore correct state
+      loadShoppingList()
+    }
   }
 
   const startEditing = (item: GroceryItem) => {
@@ -418,6 +428,14 @@ export default function ShoppingListPage() {
   const saveEdit = async () => {
     if (!editingItemId || !editName.trim()) return
 
+    // Optimistic update - update UI immediately
+    setItems(items.map(item =>
+      item.id === editingItemId
+        ? { ...item, name: editName.trim(), quantity: editQuantity.trim() || null }
+        : item
+    ))
+    cancelEditing()
+
     const { error } = await supabase
       .from('grocery_list_items')
       .update({
@@ -426,14 +444,18 @@ export default function ShoppingListPage() {
       })
       .eq('id', editingItemId)
 
-    if (!error) {
+    if (error) {
+      console.error('Error updating item:', error)
+      // Reload on error to restore correct state
       loadShoppingList()
-      cancelEditing()
     }
   }
 
   const clearCompleted = async () => {
     if (!familyId) return
+
+    // Optimistic update - remove checked items from UI immediately
+    setItems(items.filter(item => !item.is_checked))
 
     const { error } = await supabase
       .from('grocery_list_items')
@@ -441,19 +463,30 @@ export default function ShoppingListPage() {
       .eq('family_id', familyId)
       .eq('is_checked', true)
 
-    if (!error) loadShoppingList()
+    if (error) {
+      console.error('Error clearing completed items:', error)
+      // Reload on error to restore correct state
+      loadShoppingList()
+    }
   }
 
   const clearAll = async () => {
     if (!confirm('Are you sure you want to clear all items?')) return
     if (!familyId) return
 
+    // Optimistic update - clear all items from UI immediately
+    setItems([])
+
     const { error } = await supabase
       .from('grocery_list_items')
       .delete()
       .eq('family_id', familyId)
 
-    if (!error) loadShoppingList()
+    if (error) {
+      console.error('Error clearing all items:', error)
+      // Reload on error to restore correct state
+      loadShoppingList()
+    }
   }
 
   // Handle receipt processing

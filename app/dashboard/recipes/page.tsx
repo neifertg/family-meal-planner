@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import GroupSelector from '@/components/GroupSelector'
 
@@ -27,6 +28,8 @@ type Recipe = {
 }
 
 export default function RecipesPage() {
+  const router = useRouter()
+  const supabase = createClient()
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,6 +37,11 @@ export default function RecipesPage() {
   const [selectedCuisine, setSelectedCuisine] = useState<string>('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [showAddToMenuModal, setShowAddToMenuModal] = useState(false)
+  const [selectedRecipeForMenu, setSelectedRecipeForMenu] = useState<Recipe | null>(null)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('dinner')
+  const [addingToMenu, setAddingToMenu] = useState(false)
 
   useEffect(() => {
     loadRecipes()
@@ -42,7 +50,6 @@ export default function RecipesPage() {
   const loadRecipes = async () => {
     try {
       setLoading(true)
-      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
@@ -137,6 +144,57 @@ export default function RecipesPage() {
   }
 
   const hasActiveFilters = searchQuery || selectedCuisine || selectedCategory
+
+  const handleAddToMenu = (recipe: Recipe, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setSelectedRecipeForMenu(recipe)
+    // Set default date to today
+    const today = new Date().toISOString().split('T')[0]
+    setSelectedDate(today)
+    setShowAddToMenuModal(true)
+  }
+
+  const handleSaveToMenu = async () => {
+    if (!selectedRecipeForMenu || !selectedDate) return
+
+    setAddingToMenu(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      // Get family ID
+      const { data: family } = await supabase
+        .from('families')
+        .select('id')
+        .limit(1)
+        .maybeSingle()
+
+      if (!family?.id) throw new Error('No family found')
+
+      // Add meal plan
+      const { error } = await supabase
+        .from('meal_plans')
+        .insert({
+          family_id: family.id,
+          recipe_id: selectedRecipeForMenu.id,
+          planned_date: selectedDate,
+          meal_type: selectedMealType
+        })
+
+      if (error) throw error
+
+      setShowAddToMenuModal(false)
+      setSelectedRecipeForMenu(null)
+      // Show success message
+      alert(`Added "${selectedRecipeForMenu.name}" to ${selectedMealType} on ${new Date(selectedDate).toLocaleDateString()}`)
+    } catch (error: any) {
+      console.error('Error adding to menu:', error)
+      alert(error.message || 'Failed to add to menu')
+    } finally {
+      setAddingToMenu(false)
+    }
+  }
 
   return (
     <div>
@@ -306,10 +364,9 @@ export default function RecipesPage() {
         {!loading && !error && filteredRecipes.length > 0 && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRecipes.map((recipe) => (
-              <Link
+              <div
                 key={recipe.id}
-                href={`/dashboard/recipes/${recipe.id}`}
-                className="group bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:scale-[1.02]"
+                className="group bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 relative"
               >
                 {/* Image */}
                 <div className="h-48 bg-gray-200 overflow-hidden">
@@ -393,7 +450,7 @@ export default function RecipesPage() {
                   )}
 
                   {/* Meta */}
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                     {recipe.prep_time_minutes && (
                       <span className="flex items-center gap-1">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -411,9 +468,100 @@ export default function RecipesPage() {
                       </span>
                     )}
                   </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-3 border-t border-gray-100">
+                    <Link
+                      href={`/dashboard/recipes/${recipe.id}`}
+                      className="flex-1 px-3 py-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-lg hover:from-orange-600 hover:to-pink-600 transition-all text-sm font-medium text-center"
+                    >
+                      View Recipe
+                    </Link>
+                    <button
+                      onClick={(e) => handleAddToMenu(recipe, e)}
+                      className="flex-1 px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all text-sm font-medium inline-flex items-center justify-center gap-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add to Menu
+                    </button>
+                  </div>
                 </div>
-              </Link>
+              </div>
             ))}
+          </div>
+        )}
+
+        {/* Add to Menu Modal */}
+        {showAddToMenuModal && selectedRecipeForMenu && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-gray-900">Add to Weekly Menu</h3>
+                  <button
+                    onClick={() => setShowAddToMenuModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">{selectedRecipeForMenu.name}</p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* Date Picker */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                    required
+                  />
+                </div>
+
+                {/* Meal Type Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Meal Type</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((mealType) => (
+                      <button
+                        key={mealType}
+                        onClick={() => setSelectedMealType(mealType)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                          selectedMealType === mealType
+                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-gray-200 flex gap-3">
+                <button
+                  onClick={() => setShowAddToMenuModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveToMenu}
+                  disabled={!selectedDate || addingToMenu}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {addingToMenu ? 'Adding...' : 'Add to Menu'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
