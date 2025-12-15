@@ -189,7 +189,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
       // Create invitation
       const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + 7) // 7 days expiration
+      expiresAt.setDate(expiresAt.getDate() + 30) // 30 days expiration
 
       const { error } = await supabase
         .from('umbrella_group_invitations')
