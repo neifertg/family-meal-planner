@@ -1,6 +1,13 @@
--- Make all existing recipes public
--- This is a one-time migration to set visibility to 'public' for all recipes
+-- Add visibility column to recipes table if it doesn't exist
+-- Then make all existing recipes public
 
+-- Add visibility column
+ALTER TABLE recipes
+ADD COLUMN IF NOT EXISTS visibility TEXT
+CHECK (visibility IN ('public', 'private'))
+DEFAULT 'public';
+
+-- Set all existing recipes to public (this ensures any NULL values are updated)
 UPDATE recipes
 SET visibility = 'public'
 WHERE visibility IS NULL OR visibility != 'public';
@@ -14,5 +21,5 @@ BEGIN
   SELECT COUNT(*) INTO public_count FROM recipes WHERE visibility = 'public';
   SELECT COUNT(*) INTO total_count FROM recipes;
 
-  RAISE NOTICE 'Updated recipes: % out of % recipes are now public', public_count, total_count;
+  RAISE NOTICE 'Recipe visibility: % out of % recipes are now public', public_count, total_count;
 END $$;
