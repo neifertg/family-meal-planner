@@ -27,11 +27,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file size (max 25MB for Whisper API)
-    const maxSize = 25 * 1024 * 1024 // 25MB
+    // Validate file size (max 10MB for ~5 minutes of audio)
+    const maxSize = 10 * 1024 * 1024 // 10MB
     if (audioFile.size > maxSize) {
       return NextResponse.json(
-        { error: 'File too large. Maximum size is 25MB' },
+        { error: 'File too large. Maximum size is 10MB (~5 minutes of audio)' },
         { status: 400 }
       )
     }
