@@ -29,7 +29,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const [costUsd, setCostUsd] = useState<number | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null)
-  const [applyToBudget, setApplyToBudget] = useState(false)
+  const [applyToBudget, setApplyToBudget] = useState(true) // Default to true - most users want to track receipts in budget
 
   const supabase = createClient()
 
@@ -254,6 +254,15 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
 
     // Save corrections for learning if familyId is available (async, don't block user)
     if (familyId) {
+      console.log('[ReceiptScanner] Saving receipt to database...', {
+        familyId,
+        storeName: editableStoreName,
+        purchaseDate: editablePurchaseDate,
+        itemCount: editableItems.length,
+        total: editableItems.reduce((sum, item) => sum + item.price, 0),
+        appliedToBudget: applyToBudget
+      })
+
       saveReceiptCorrections(
         {
           family_id: familyId,
@@ -266,15 +275,20 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
         },
         originalItems,
         editableItems
-      ).catch(err => {
-        console.error('Failed to save corrections for learning:', err)
+      ).then(() => {
+        console.log('[ReceiptScanner] Receipt saved successfully to database')
+      }).catch(err => {
+        console.error('[ReceiptScanner] Failed to save receipt to database:', err)
         // Don't fail the user's workflow if learning save fails
       })
     } else {
-      console.warn('No familyId available - skipping learning save')
+      console.warn('[ReceiptScanner] No familyId available - skipping database save')
     }
 
-    console.log('Calling onReceiptProcessed with:', approvedReceipt, 'applyToBudget:', applyToBudget)
+    console.log('[ReceiptScanner] Calling onReceiptProcessed with:', {
+      receipt: approvedReceipt,
+      applyToBudget
+    })
     onReceiptProcessed(approvedReceipt, applyToBudget)
   }
 
@@ -618,20 +632,34 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
           </div>
 
           {/* Apply to Budget Checkbox */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className={`rounded-lg p-4 border-2 transition-all ${
+            applyToBudget
+              ? 'bg-green-50 border-green-400'
+              : 'bg-gray-50 border-gray-300'
+          }`}>
             <label className="flex items-start gap-3 cursor-pointer group">
               <input
                 type="checkbox"
                 checked={applyToBudget}
-                onChange={(e) => setApplyToBudget(e.target.checked)}
-                className="w-5 h-5 mt-0.5 text-green-600 border-gray-300 rounded focus:ring-2 focus:ring-green-500 cursor-pointer"
+                onChange={(e) => {
+                  console.log('[ReceiptScanner] Apply to budget toggled:', e.target.checked)
+                  setApplyToBudget(e.target.checked)
+                }}
+                className="w-6 h-6 mt-0.5 text-green-600 border-gray-400 rounded focus:ring-2 focus:ring-green-500 cursor-pointer"
               />
               <div className="flex-1">
-                <div className="font-semibold text-blue-900 group-hover:text-blue-700 transition-colors">
-                  Apply ${editableItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)} to Monthly Budget
+                <div className={`font-bold text-lg transition-colors ${
+                  applyToBudget ? 'text-green-900' : 'text-gray-700'
+                }`}>
+                  {applyToBudget ? '✓ ' : ''}Apply ${editableItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)} to Monthly Budget
                 </div>
-                <p className="text-sm text-blue-700 mt-1">
-                  Check this to deduct this receipt total from your monthly budget tracker
+                <p className={`text-sm mt-1 ${
+                  applyToBudget ? 'text-green-700' : 'text-gray-600'
+                }`}>
+                  {applyToBudget
+                    ? 'This receipt will be tracked in your budget and appear in your receipts list'
+                    : 'Check this to track this receipt in your monthly budget'
+                  }
                 </p>
               </div>
             </label>
