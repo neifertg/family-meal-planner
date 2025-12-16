@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { extractReceiptFromImage } from '@/lib/receiptScanner/claudeExtractor'
 import { getVendorLearningExamples, getGeneralLearningExamples } from '@/lib/receiptScanner/learningSystem'
 
+/**
+ * Receipt Scanning API - CLAUDE VISION ONLY
+ *
+ * This endpoint exclusively uses Claude Vision (Anthropic's multimodal AI) for receipt scanning.
+ * There is NO OCR fallback. All receipt processing goes through Claude Sonnet 4.
+ *
+ * If scanning fails, check:
+ * 1. ANTHROPIC_API_KEY environment variable is set correctly
+ * 2. Image is in valid format (JPEG, PNG, WebP)
+ * 3. Image size is under Claude's limits
+ * 4. API rate limits haven't been exceeded
+ */
 export async function POST(request: NextRequest) {
   try {
     const { imageData, familyId, storeName } = await request.json()
