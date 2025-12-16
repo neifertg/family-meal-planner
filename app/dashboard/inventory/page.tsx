@@ -31,6 +31,8 @@ export default function InventoryPage() {
   const [showAudioUpload, setShowAudioUpload] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
   const [editingExpirationId, setEditingExpirationId] = useState<string | null>(null)
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -158,6 +160,52 @@ export default function InventoryPage() {
     } else {
       loadInventory()
     }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.size === 0) return
+
+    const itemCount = selectedItems.size
+    if (!confirm(`Are you sure you want to delete ${itemCount} selected item${itemCount > 1 ? 's' : ''}?`)) return
+
+    const itemIds = Array.from(selectedItems)
+
+    const { error } = await supabase
+      .from('inventory_items')
+      .delete()
+      .in('id', itemIds)
+
+    if (error) {
+      console.error('Error deleting items:', error)
+      alert(`Failed to delete items: ${error.message}`)
+    } else {
+      setSelectedItems(new Set())
+      setIsSelectionMode(false)
+      loadInventory()
+    }
+  }
+
+  const toggleItemSelection = (id: string) => {
+    const newSelection = new Set(selectedItems)
+    if (newSelection.has(id)) {
+      newSelection.delete(id)
+    } else {
+      newSelection.add(id)
+    }
+    setSelectedItems(newSelection)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedItems.size === items.length) {
+      setSelectedItems(new Set())
+    } else {
+      setSelectedItems(new Set(items.map(item => item.id)))
+    }
+  }
+
+  const cancelSelection = () => {
+    setSelectedItems(new Set())
+    setIsSelectionMode(false)
   }
 
   const handleQuickQuantityUpdate = async (id: string, newLevel: QuantityLevel) => {
@@ -415,6 +463,17 @@ export default function InventoryPage() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
+            {!isSelectionMode && items.length > 0 && (
+              <button
+                onClick={() => setIsSelectionMode(true)}
+                className="bg-white hover:bg-purple-50 text-purple-700 font-semibold py-2.5 px-4 md:px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <span className="hidden sm:inline">Bulk Edit</span>
+              </button>
+            )}
             <button
               onClick={() => setShowAudioUpload(true)}
               className="bg-white hover:bg-purple-50 text-purple-700 font-semibold py-2.5 px-4 md:px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
@@ -445,6 +504,49 @@ export default function InventoryPage() {
           </div>
         </div>
       </div>
+
+      {/* Bulk Selection Bar */}
+      {isSelectionMode && (
+        <div className="bg-indigo-600 text-white rounded-xl p-4 shadow-lg">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedItems.size === items.length && items.length > 0}
+                  onChange={toggleSelectAll}
+                  className="w-5 h-5 rounded border-white/30 text-indigo-600 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600 cursor-pointer"
+                />
+                <span className="font-medium">
+                  {selectedItems.size === items.length ? 'Deselect All' : 'Select All'}
+                </span>
+              </div>
+              <div className="h-6 w-px bg-white/30"></div>
+              <span className="font-semibold">
+                {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleBulkDelete}
+                disabled={selectedItems.size === 0}
+                className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete
+              </button>
+              <button
+                onClick={cancelSelection}
+                className="bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -524,8 +626,10 @@ export default function InventoryPage() {
                   {categoryItems.map((item) => (
                     <div
                       key={item.id}
-                      className={`group p-4 rounded-lg border-2 ${
-                        isExpired(item.expiration_date)
+                      className={`group p-4 rounded-lg border-2 transition-all ${
+                        selectedItems.has(item.id)
+                          ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-200'
+                          : isExpired(item.expiration_date)
                           ? 'bg-red-50 border-red-200'
                           : isExpiringSoon(item.expiration_date)
                           ? 'bg-orange-50 border-orange-200'
@@ -533,8 +637,17 @@ export default function InventoryPage() {
                       }`}
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900">{item.name}</h4>
+                        <div className="flex items-start gap-3 flex-1">
+                          {isSelectionMode && (
+                            <input
+                              type="checkbox"
+                              checked={selectedItems.has(item.id)}
+                              onChange={() => toggleItemSelection(item.id)}
+                              className="mt-1 w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                            />
+                          )}
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-900">{item.name}</h4>
                           <div className="space-y-0.5">
                             {item.purchase_date && (
                               <p className="text-xs text-gray-500">
@@ -595,25 +708,28 @@ export default function InventoryPage() {
                               </div>
                             )}
                           </div>
+                          </div>
                         </div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => handleEdit(item)}
-                            className="p-1.5 hover:bg-white rounded transition-colors"
-                          >
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item.id)}
-                            className="p-1.5 hover:bg-white rounded transition-colors"
-                          >
-                            <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
+                        {!isSelectionMode && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleEdit(item)}
+                              className="p-1.5 hover:bg-white rounded transition-colors"
+                            >
+                              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              className="p-1.5 hover:bg-white rounded transition-colors"
+                            >
+                              <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Quick Quantity Controls */}
