@@ -28,6 +28,7 @@ Extract the following information:
 - total (number): Total amount paid
 - payment_method (string): Payment method if visible (e.g., "VISA", "CASH")
 - receipt_number (string): Receipt or transaction number if visible
+- quality_warnings (array of strings): Any quality issues detected (e.g., "Image appears upside down", "Blurry section in middle", "Missing total")
 
 CATEGORY GUIDELINES:
 - "produce": Fresh fruits, vegetables (apples, lettuce, tomatoes, carrots, etc.)
@@ -49,6 +50,40 @@ IMPORTANT INSTRUCTIONS:
 9. For position_percent: Estimate where vertically on the receipt this item appears (0 = very top, 100 = very bottom)
 10. For category and is_food: Use context from the store type and surrounding items to categorize accurately
 11. Return ONLY valid JSON - no markdown, no explanations
+
+SMART QUANTITY EXTRACTION:
+- Detect bulk purchases: "2 @ $3.99" means 2 items at $3.99 EACH (quantity: "2", price: 7.98, unit_price: 3.99)
+- Handle weight-based pricing: "2.34 lb @ $5.99/lb = $14.02" → quantity: "2.34 lb", unit_price: 5.99, price: 14.02
+- Normalize units consistently: "oz" or "ounces" → use "oz"; "lb" or "pounds" → use "lb"; "ea" or "each" → use "ea"
+- Calculate unit_price when possible from total price and quantity
+
+ITEM NAME NORMALIZATION:
+- Convert ALL-CAPS to Proper Case: "ORGANIC WHOLE MILK" → "Organic Whole Milk"
+- Remove receipt codes/SKUs from names: "ORG MLK 12345" → "Organic Milk"
+- Standardize produce names using PLU codes if visible:
+  * 4011 → "Yellow Banana"
+  * 4030 → "Kiwi"
+  * 4225 → "Red Grapefruit"
+  * 4046 → "Avocado (Hass)"
+  * 4065 → "Green Grapes"
+  * Common patterns: "BANAN 4011" → "Yellow Banana"
+- Clean up abbreviations: "CHK BRE" → "Chicken Breast", "ORG" → "Organic", "GRN" → "Green"
+
+DUPLICATE CONSOLIDATION:
+- If the SAME item appears multiple times on the receipt, consolidate into ONE entry
+- Combine quantities: If "Chicken Breast" appears twice (2 lb and 1.5 lb), create one entry with quantity "3.5 lb"
+- Sum prices: Add all prices for duplicate items
+- Keep the most complete name if descriptions vary slightly
+- Examples:
+  * "BANANAS 2 lb @ $0.59/lb = $1.18" and "BANANAS 1.5 lb @ $0.59/lb = $0.89" → Single entry: name: "Yellow Banana", quantity: "3.5 lb", price: 2.07, unit_price: 0.59
+  * "ORGANIC MILK $4.99" and "ORGANIC MILK $4.99" → Single entry: name: "Organic Milk", quantity: "2", price: 9.98, unit_price: 4.99
+
+RECEIPT QUALITY ASSESSMENT:
+- Check image orientation: If text appears upside down or sideways, add to quality_warnings: "Image appears upside down" or "Image appears rotated 90 degrees"
+- Detect blur/illegibility: If portions are blurry or unreadable, add: "Blurry section detected near [top/middle/bottom]"
+- Missing critical info: If store name, date, or total is not visible, add: "Missing store name" or "Missing purchase date" or "Missing total amount"
+- Torn/damaged: If receipt appears torn or damaged, add: "Receipt appears damaged or torn"
+- Include quality_warnings array even if empty ([]) to indicate assessment was performed
 
 If a field is not found in the receipt, omit it from the JSON (don't use null).`
 
