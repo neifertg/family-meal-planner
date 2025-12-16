@@ -63,11 +63,29 @@ export default function MealConfirmationNotification({
       const storageKey = `meal_confirmation_${yesterdayDate}`
       localStorage.setItem(storageKey, madeMeals ? 'yes' : 'no')
 
-      // If meals were made (default: Yes), we could update inventory here
-      // For now, we'll just track the confirmation
+      // If meals were made, update inventory levels and mark meals as completed
       if (madeMeals) {
-        // TODO: Future enhancement - update inventory levels based on recipe ingredients
-        console.log('Meals were made - inventory should be updated')
+        const mealIds = yesterdayMeals.map(meal => meal.id)
+
+        const response = await fetch('/api/meals/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mealIds,
+            familyId
+          })
+        })
+
+        const result = await response.json()
+
+        if (result.success) {
+          console.log(`Inventory updated: ${result.itemsUpdated} items reduced`)
+          if (result.itemsUsed && result.itemsUsed.length > 0) {
+            console.log('Items used:', result.itemsUsed.join(', '))
+          }
+        } else {
+          console.error('Failed to update inventory:', result.error)
+        }
       }
 
       // Hide the notification
