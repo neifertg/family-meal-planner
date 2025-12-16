@@ -117,7 +117,7 @@ export default async function DashboardPage() {
         </Link>
 
         <Link
-          href="/dashboard/receipts"
+          href="/dashboard/receipts?openScanner=true"
           className="group flex flex-col items-center justify-center p-6 bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-2xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
         >
           <svg className="w-8 h-8 text-white mb-3 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">

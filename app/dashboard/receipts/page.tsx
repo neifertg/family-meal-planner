@@ -24,6 +24,17 @@ export default function ReceiptsPage() {
 
   useEffect(() => {
     loadFamily()
+
+    // Check if we should open the scanner automatically (from dashboard button)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('openScanner') === 'true') {
+      // Wait a bit for familyId to load
+      setTimeout(() => {
+        setShowReceiptScanner(true)
+        // Remove query param from URL
+        window.history.replaceState({}, '', '/dashboard/receipts')
+      }, 500)
+    }
   }, [])
 
   useEffect(() => {
