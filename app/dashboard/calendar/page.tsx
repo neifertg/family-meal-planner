@@ -23,6 +23,13 @@ type RecipeWithScore = Recipe & {
   expiringIngredients?: string[]
 }
 
+type MealPlanRecipe = {
+  id: string
+  recipe_id: string
+  display_order: number
+  recipes: Recipe
+}
+
 type MealPlan = {
   id: string
   recipe_id: string | null
@@ -30,7 +37,8 @@ type MealPlan = {
   meal_type: string
   is_completed: boolean
   guest_count: number
-  recipes: Recipe | null
+  recipes: Recipe | null // Deprecated: kept for backward compatibility
+  meal_plan_recipes: MealPlanRecipe[]
   adhoc_meal_name: string | null
   adhoc_ingredients: string[] | null
 }
@@ -143,6 +151,20 @@ export default function CalendarPage() {
           image_url,
           prep_time_minutes,
           cook_time_minutes
+        ),
+        meal_plan_recipes (
+          id,
+          recipe_id,
+          display_order,
+          recipes (
+            id,
+            name,
+            image_url,
+            prep_time_minutes,
+            cook_time_minutes,
+            estimated_cost_usd,
+            cost_per_serving_usd
+          )
         )
       `)
       .gte('planned_date', formatLocalDate(weekStart))
@@ -188,31 +210,73 @@ export default function CalendarPage() {
     }
   }
 
-  const assignRecipe = async (recipeId: string, date: string, mealType: string) => {
+  const assignRecipes = async (recipeIds: string[], date: string, mealType: string) => {
     if (!familyId) {
       alert('Family not found. Please refresh the page.')
       return
     }
 
-    const { error } = await supabase
+    if (recipeIds.length === 0) {
+      alert('Please select at least one recipe')
+      return
+    }
+
+    // First, create or update the meal plan
+    const { data: mealPlan, error: mealError } = await supabase
       .from('meal_plans')
       .upsert({
         family_id: familyId,
-        recipe_id: recipeId,
+        recipe_id: null, // We're using meal_plan_recipes table now
         planned_date: date,
         meal_type: mealType,
-        guest_count: guestCount
+        guest_count: guestCount,
+        adhoc_meal_name: null, // Clear any adhoc meal
+        adhoc_ingredients: null
       }, {
         onConflict: 'family_id,planned_date,meal_type'
       })
+      .select()
+      .single()
 
-    if (error) {
-      console.error('Error assigning recipe:', error)
-      alert(`Failed to add meal: ${error.message}`)
+    if (mealError) {
+      console.error('Error creating meal plan:', mealError)
+      alert(`Failed to add meal: ${mealError.message}`)
+      return
+    }
+
+    // Delete existing recipe associations for this meal plan
+    const { error: deleteError } = await supabase
+      .from('meal_plan_recipes')
+      .delete()
+      .eq('meal_plan_id', mealPlan.id)
+
+    if (deleteError) {
+      console.error('Error clearing old recipes:', deleteError)
+    }
+
+    // Insert new recipe associations
+    const mealPlanRecipes = recipeIds.map((recipeId, index) => ({
+      meal_plan_id: mealPlan.id,
+      recipe_id: recipeId,
+      display_order: index
+    }))
+
+    const { error: insertError } = await supabase
+      .from('meal_plan_recipes')
+      .insert(mealPlanRecipes)
+
+    if (insertError) {
+      console.error('Error assigning recipes:', insertError)
+      alert(`Failed to add recipes: ${insertError.message}`)
     } else {
       loadWeekData()
       setSelectedSlot(null)
     }
+  }
+
+  // Legacy function for single recipe (kept for backward compatibility)
+  const assignRecipe = async (recipeId: string, date: string, mealType: string) => {
+    await assignRecipes([recipeId], date, mealType)
   }
 
   const assignAdhocMeal = async (mealName: string, ingredients: string[], date: string, mealType: string) => {
@@ -501,6 +565,7 @@ export default function CalendarPage() {
           recipes={recipes}
           suggestedRecipes={suggestedRecipes}
           onSelect={(recipeId) => assignRecipe(recipeId, selectedSlot.date, selectedSlot.mealType)}
+          onSelectMultiple={(recipeIds) => assignRecipes(recipeIds, selectedSlot.date, selectedSlot.mealType)}
           onSelectAdhoc={(mealName, ingredients) => assignAdhocMeal(mealName, ingredients, selectedSlot.date, selectedSlot.mealType)}
           onClose={() => setSelectedSlot(null)}
           mealType={selectedSlot.mealType}
@@ -559,7 +624,18 @@ function MealSlot({
   }
 
   const isAdhoc = meal.adhoc_meal_name !== null
-  const mealName = isAdhoc ? meal.adhoc_meal_name : meal.recipes?.name
+  const hasMultipleRecipes = meal.meal_plan_recipes && meal.meal_plan_recipes.length > 1
+  const hasRecipes = meal.meal_plan_recipes && meal.meal_plan_recipes.length > 0
+
+  // Sort recipes by display_order
+  const sortedRecipes = hasRecipes
+    ? [...meal.meal_plan_recipes].sort((a, b) => a.display_order - b.display_order)
+    : []
+
+  // Calculate total cost for all recipes
+  const totalCost = sortedRecipes.reduce((sum, mpr) => {
+    return sum + (mpr.recipes.estimated_cost_usd || 0)
+  }, 0)
 
   return (
     <div className={`p-3 rounded-lg border-2 ${meal.is_completed ? 'bg-green-50 border-green-300' : isAdhoc ? 'bg-amber-50 border-amber-200' : 'bg-purple-50 border-purple-200'}`}>
@@ -569,23 +645,33 @@ function MealSlot({
             <span>{mealIcons[mealType as keyof typeof mealIcons]}</span>
             {mealType}
             {isAdhoc && <span className="text-xs text-amber-600 font-normal ml-1">(Quick Meal)</span>}
+            {hasMultipleRecipes && <span className="text-xs text-purple-600 font-normal ml-1">({sortedRecipes.length} recipes)</span>}
           </div>
-          {!isAdhoc && meal.recipe_id ? (
-            <Link
-              href={`/dashboard/recipes/${meal.recipe_id}`}
-              className="text-sm font-semibold text-gray-900 line-clamp-2 transition-colors text-left hover:text-indigo-600 block"
-            >
-              {mealName}
-            </Link>
-          ) : (
-            <div className="text-sm font-semibold text-gray-900 line-clamp-2">
-              {mealName}
+
+          {/* Display multiple recipes */}
+          {hasRecipes ? (
+            <div className="space-y-1">
+              {sortedRecipes.map((mpr, index) => (
+                <Link
+                  key={mpr.id}
+                  href={`/dashboard/recipes/${mpr.recipe_id}`}
+                  className="text-sm font-semibold text-gray-900 line-clamp-1 transition-colors text-left hover:text-indigo-600 block"
+                >
+                  {hasMultipleRecipes && <span className="text-gray-500 mr-1">{index + 1}.</span>}
+                  {mpr.recipes.name}
+                </Link>
+              ))}
             </div>
-          )}
+          ) : isAdhoc ? (
+            <div className="text-sm font-semibold text-gray-900 line-clamp-2">
+              {meal.adhoc_meal_name}
+            </div>
+          ) : null}
+
           <div className="flex items-center gap-2 mt-1">
-            {meal.recipes?.estimated_cost_usd && (
+            {totalCost > 0 && (
               <div className="text-xs text-green-700 font-medium">
-                ${meal.recipes.estimated_cost_usd.toFixed(2)}
+                ${totalCost.toFixed(2)}
               </div>
             )}
             {meal.guest_count > 0 && (
@@ -633,6 +719,7 @@ function RecipeSelectionModal({
   recipes,
   suggestedRecipes,
   onSelect,
+  onSelectMultiple,
   onSelectAdhoc,
   onClose,
   mealType,
@@ -644,6 +731,7 @@ function RecipeSelectionModal({
   recipes: Recipe[]
   suggestedRecipes: RecipeWithScore[]
   onSelect: (recipeId: string) => void
+  onSelectMultiple: (recipeIds: string[]) => void
   onSelectAdhoc: (mealName: string, ingredients: string[]) => void
   onClose: () => void
   mealType: string
@@ -655,10 +743,34 @@ function RecipeSelectionModal({
   const [search, setSearch] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(true)
   const [viewMode, setViewMode] = useState<'recipe' | 'adhoc'>('recipe')
+  const [multiSelectMode, setMultiSelectMode] = useState(false)
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([])
 
   const filteredRecipes = recipes.filter(r =>
     r.name.toLowerCase().includes(search.toLowerCase())
   )
+
+  const toggleRecipeSelection = (recipeId: string) => {
+    if (selectedRecipeIds.includes(recipeId)) {
+      setSelectedRecipeIds(selectedRecipeIds.filter(id => id !== recipeId))
+    } else {
+      setSelectedRecipeIds([...selectedRecipeIds, recipeId])
+    }
+  }
+
+  const handleRecipeClick = (recipeId: string) => {
+    if (multiSelectMode) {
+      toggleRecipeSelection(recipeId)
+    } else {
+      onSelect(recipeId)
+    }
+  }
+
+  const handleAddSelectedRecipes = () => {
+    if (selectedRecipeIds.length > 0) {
+      onSelectMultiple(selectedRecipeIds)
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
@@ -680,7 +792,11 @@ function RecipeSelectionModal({
           {/* Tab Switcher */}
           <div className="flex gap-2 mb-4">
             <button
-              onClick={() => setViewMode('recipe')}
+              onClick={() => {
+                setViewMode('recipe')
+                setMultiSelectMode(false)
+                setSelectedRecipeIds([])
+              }}
               className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
                 viewMode === 'recipe'
                   ? 'bg-indigo-600 text-white'
@@ -690,7 +806,11 @@ function RecipeSelectionModal({
               From Recipe
             </button>
             <button
-              onClick={() => setViewMode('adhoc')}
+              onClick={() => {
+                setViewMode('adhoc')
+                setMultiSelectMode(false)
+                setSelectedRecipeIds([])
+              }}
               className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
                 viewMode === 'adhoc'
                   ? 'bg-amber-600 text-white'
@@ -700,6 +820,36 @@ function RecipeSelectionModal({
               Quick Meal
             </button>
           </div>
+
+          {/* Multi-select toggle - Only show in recipe mode */}
+          {viewMode === 'recipe' && (
+            <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={multiSelectMode}
+                  onChange={(e) => {
+                    setMultiSelectMode(e.target.checked)
+                    if (!e.target.checked) {
+                      setSelectedRecipeIds([])
+                    }
+                  }}
+                  className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900 flex items-center gap-2">
+                    Select Multiple Recipes
+                    {multiSelectMode && selectedRecipeIds.length > 0 && (
+                      <span className="text-sm bg-purple-600 text-white px-2 py-0.5 rounded-full">
+                        {selectedRecipeIds.length} selected
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-600">For big meals that require multiple recipes</div>
+                </div>
+              </label>
+            </div>
+          )}
 
           {/* Search - Only show in recipe mode */}
           {viewMode === 'recipe' && (
@@ -786,8 +936,12 @@ function RecipeSelectionModal({
                 {suggestedRecipes.map((recipe) => (
                   <button
                     key={recipe.id}
-                    onClick={() => onSelect(recipe.id)}
-                    className="flex items-center gap-4 p-3 bg-gradient-to-r from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 rounded-lg transition-all text-left group border-2 border-emerald-200"
+                    onClick={() => handleRecipeClick(recipe.id)}
+                    className={`flex items-center gap-4 p-3 bg-gradient-to-r from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 rounded-lg transition-all text-left group border-2 ${
+                      multiSelectMode && selectedRecipeIds.includes(recipe.id)
+                        ? 'border-purple-500 ring-2 ring-purple-200'
+                        : 'border-emerald-200'
+                    }`}
                   >
                     {recipe.image_url ? (
                       <img
@@ -839,12 +993,17 @@ function RecipeSelectionModal({
               </Link>
             </div>
           ) : (
+            <>
             <div className="grid gap-3">
               {filteredRecipes.map((recipe) => (
                 <button
                   key={recipe.id}
-                  onClick={() => onSelect(recipe.id)}
-                  className="flex items-center gap-4 p-4 bg-gray-50 hover:bg-indigo-50 rounded-lg transition-all text-left group border-2 border-transparent hover:border-indigo-200"
+                  onClick={() => handleRecipeClick(recipe.id)}
+                  className={`flex items-center gap-4 p-4 rounded-lg transition-all text-left group border-2 ${
+                    multiSelectMode && selectedRecipeIds.includes(recipe.id)
+                      ? 'bg-purple-100 border-purple-500 ring-2 ring-purple-200'
+                      : 'bg-gray-50 hover:bg-indigo-50 border-transparent hover:border-indigo-200'
+                  }`}
                 >
                   {recipe.image_url ? (
                     <img
@@ -876,6 +1035,22 @@ function RecipeSelectionModal({
                   </svg>
                 </button>
               ))}
+            </div>
+            </>
+          )}
+
+          {/* Add Selected Recipes Button - Only show in multi-select mode */}
+          {multiSelectMode && selectedRecipeIds.length > 0 && (
+            <div className="sticky bottom-0 bg-white border-t border-gray-200 pt-4 mt-4">
+              <button
+                onClick={handleAddSelectedRecipes}
+                className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add {selectedRecipeIds.length} Recipe{selectedRecipeIds.length !== 1 ? 's' : ''} to Meal
+              </button>
             </div>
           )}
             </>
