@@ -30,15 +30,17 @@ export default function ReceiptsPage() {
   }, [familyId, selectedMonth])
 
   const loadFamily = async () => {
+    console.log('[ReceiptsPage] Loading family data...')
     // Get family_id from family_members (take first one)
     const { data: memberData, error: memberError } = await supabase
       .from('family_members')
       .select('family_id')
       .limit(1)
 
-    console.log('Member data:', memberData, 'Error:', memberError)
+    console.log('[ReceiptsPage] Member data loaded:', { memberData, error: memberError })
 
     if (memberData && memberData.length > 0 && memberData[0]?.family_id) {
+      console.log('[ReceiptsPage] Setting familyId:', memberData[0].family_id)
       setFamilyId(memberData[0].family_id)
 
       // Get family budget
@@ -48,11 +50,13 @@ export default function ReceiptsPage() {
         .eq('id', memberData[0].family_id)
         .single()
 
-      console.log('Family data:', familyData, 'Error:', familyError)
+      console.log('[ReceiptsPage] Family budget loaded:', { familyData, error: familyError })
 
       if (familyData) {
         setMonthlyBudget(familyData.monthly_budget || null)
       }
+    } else {
+      console.error('[ReceiptsPage] No family member data found')
     }
   }
 
@@ -199,13 +203,22 @@ export default function ReceiptsPage() {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => setShowReceiptScanner(true)}
-              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium shadow-md hover:shadow-lg flex items-center gap-2"
+              onClick={() => {
+                console.log('[ReceiptsPage] Scan Receipt clicked', { familyId, showReceiptScanner })
+                if (!familyId) {
+                  console.warn('[ReceiptsPage] Cannot open scanner - familyId not loaded')
+                  alert('Loading family data... Please try again in a moment.')
+                  return
+                }
+                setShowReceiptScanner(true)
+              }}
+              disabled={!familyId}
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium shadow-md hover:shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Scan Receipt
+              {familyId ? 'Scan Receipt' : 'Loading...'}
             </button>
             <Link
               href="/dashboard"
@@ -420,7 +433,7 @@ export default function ReceiptsPage() {
         </div>
 
         {/* Receipt Scanner Modal */}
-        {showReceiptScanner && familyId && (
+        {showReceiptScanner && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -435,10 +448,17 @@ export default function ReceiptsPage() {
                 </button>
               </div>
               <div className="p-6">
-                <ReceiptScanner
-                  familyId={familyId}
-                  onReceiptProcessed={handleReceiptProcessed}
-                />
+                {familyId ? (
+                  <ReceiptScanner
+                    familyId={familyId}
+                    onReceiptProcessed={handleReceiptProcessed}
+                  />
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading family data...</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -105,11 +105,23 @@ export async function extractReceiptFromImage(
   learningExamples: any[] = []
 ): Promise<ReceiptExtractionResult> {
   try {
+    console.log('[claudeExtractor] Starting extraction', {
+      mimeType,
+      imageDataLength: imageData.length,
+      learningExamplesCount: learningExamples.length,
+      timestamp: new Date().toISOString()
+    })
+
     const client = getClaudeClient()
 
     // Build prompt with learning examples if available
     const learningContext = formatLearningExamples(learningExamples)
     const fullPrompt = `${EXTRACTION_PROMPT}${learningContext}\n\nExtract the receipt data from this image. Return the data as JSON:`
+
+    console.log('[claudeExtractor] Calling Claude API...', {
+      model: 'claude-sonnet-4-20250514',
+      hasLearningContext: learningContext.length > 0
+    })
 
     // Call Claude with vision
     const message = await client.messages.create({
@@ -137,17 +149,38 @@ export async function extractReceiptFromImage(
       ]
     })
 
+    console.log('[claudeExtractor] Claude API response received', {
+      stopReason: message.stop_reason,
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens
+    })
+
     // Extract JSON from response
     const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
     let receipt: ExtractedReceipt
+
+    console.log('[claudeExtractor] Parsing response', {
+      responseLength: responseText.length,
+      responsePreview: responseText.substring(0, 200)
+    })
 
     try {
       const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) ||
                        responseText.match(/```\s*([\s\S]*?)\s*```/)
       const jsonText = jsonMatch ? jsonMatch[1] : responseText
       receipt = JSON.parse(jsonText)
-    } catch (parseError) {
-      console.error('Failed to parse Claude Vision response:', responseText)
+
+      console.log('[claudeExtractor] JSON parsed successfully', {
+        storeName: receipt.store_name,
+        itemCount: receipt.items?.length,
+        hasTotal: !!receipt.total
+      })
+    } catch (parseError: any) {
+      console.error('[claudeExtractor] JSON parse error:', {
+        error: parseError,
+        message: parseError.message,
+        responseText: responseText.substring(0, 500)
+      })
       throw new Error('Invalid JSON response from Claude Vision')
     }
 
@@ -176,19 +209,30 @@ export async function extractReceiptFromImage(
     }
 
   } catch (error: any) {
-    console.error('Claude Vision extraction error:', error)
+    console.error('[claudeExtractor] Exception caught:', {
+      error,
+      message: error.message,
+      stack: error.stack,
+      status: error.status,
+      type: error.type,
+      name: error.name
+    })
 
     // Provide more specific error messages
     let errorMessage = 'Failed to extract receipt from image'
 
     if (error.status === 401 || error.status === 403) {
       errorMessage = 'Authentication error with Claude API. Please check API key configuration.'
+      console.error('[claudeExtractor] Authentication error - check ANTHROPIC_API_KEY')
     } else if (error.status === 429) {
       errorMessage = 'Rate limit exceeded. Please try again in a moment.'
+      console.error('[claudeExtractor] Rate limit exceeded')
     } else if (error.status === 400) {
       errorMessage = 'Invalid image format. Claude Vision could not process this image.'
+      console.error('[claudeExtractor] Invalid image format', { error: error.error })
     } else if (error.message) {
       errorMessage = `Claude Vision error: ${error.message}`
+      console.error('[claudeExtractor] Claude error:', { message: error.message, type: error.type })
     }
 
     return {
