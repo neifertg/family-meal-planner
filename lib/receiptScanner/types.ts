@@ -16,7 +16,8 @@ export type ReceiptItem = {
   quantity?: string        // "2 lb", "1 dozen", "3 cans"
   price: number
   unit_price?: number      // Price per unit if calculable
-  category?: string        // Auto-categorized: produce, dairy, meat, etc.
+  category?: string        // Categorized by Claude: produce, dairy, meat, pantry, frozen, non_food
+  is_food?: boolean        // true for food items, false for bags/gift wrap/non-grocery
   source_text?: string     // Raw text from receipt that this item came from
   line_number?: number     // Approximate line number on receipt (for visual alignment)
   position_percent?: number // Vertical position as percentage (0-100) from top of receipt

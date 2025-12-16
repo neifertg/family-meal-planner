@@ -18,6 +18,8 @@ Extract the following information:
   - quantity (string): Quantity purchased (e.g., "2 lb", "1 dozen", "3 cans")
   - price (number): Item price in dollars
   - unit_price (number): Price per unit if calculable
+  - category (string): REQUIRED - One of: "produce", "dairy", "meat", "pantry", "frozen", or "non_food"
+  - is_food (boolean): REQUIRED - true if this is a food/grocery item, false for non-food items (bags, gift wrap, household items, etc.)
   - source_text (string): EXACT text from the receipt for this item (including any codes/abbreviations)
   - line_number (number): Approximate line number where this item appears on the receipt
   - position_percent (number): Vertical position of this item as a percentage (0-100) from top of receipt to bottom
@@ -27,17 +29,26 @@ Extract the following information:
 - payment_method (string): Payment method if visible (e.g., "VISA", "CASH")
 - receipt_number (string): Receipt or transaction number if visible
 
+CATEGORY GUIDELINES:
+- "produce": Fresh fruits, vegetables (apples, lettuce, tomatoes, carrots, etc.)
+- "dairy": Milk, cheese, yogurt, butter, cream, eggs
+- "meat": All meats, poultry, seafood (chicken, beef, pork, fish, steak, salami, hotdogs, bacon, etc.)
+- "pantry": Shelf-stable items (flour, rice, pasta, bread, canned goods, spices, sauces, etc.)
+- "frozen": Frozen foods, ice cream
+- "non_food": Bags, gift wrap, household items, cleaning supplies, paper products, etc.
+
 IMPORTANT INSTRUCTIONS:
 1. Parse each line item carefully - extract item name, quantity, and price
 2. Convert all prices to numbers (remove $ signs)
 3. Identify quantities from item descriptions (e.g., "2 LB CHICKEN" → quantity: "2 lb")
 4. Group items logically - don't split single items across multiple entries
-5. Skip non-grocery items like bags, discounts, or promotional text
+5. INCLUDE non-food items (bags, gift wrap, etc.) but mark them with is_food: false and category: "non_food"
 6. Handle multi-line item descriptions correctly
 7. For source_text: Include the EXACT text as it appears on the receipt (e.g., "CHK BRE 2LB" not "Chicken Breast")
 8. For line_number: Count from top of receipt, starting at 1
 9. For position_percent: Estimate where vertically on the receipt this item appears (0 = very top, 100 = very bottom)
-10. Return ONLY valid JSON - no markdown, no explanations
+10. For category and is_food: Use context from the store type and surrounding items to categorize accurately
+11. Return ONLY valid JSON - no markdown, no explanations
 
 If a field is not found in the receipt, omit it from the JSON (don't use null).`
 
@@ -53,11 +64,10 @@ function getClaudeClient(): Anthropic {
 }
 
 /**
- * Categorize grocery items
- * Returns one of: 'produce', 'dairy', 'meat', 'pantry', 'frozen'
- * Defaults to 'pantry' for uncategorized items
+ * Fallback categorization for items where Claude didn't provide a category
+ * This should rarely be needed since Claude now handles categorization in the prompt
  */
-function categorizeItem(itemName: string): string {
+function fallbackCategorizeItem(itemName: string): string {
   const lower = itemName.toLowerCase()
 
   if (/(apple|banana|orange|lettuce|tomato|carrot|onion|garlic|pepper|fruit|vegetable|spinach|kale|broccoli|cauliflower|potato|celery|cucumber|zucchini|mushroom)/i.test(lower)) {
@@ -71,9 +81,6 @@ function categorizeItem(itemName: string): string {
   }
   if (/(frozen|ice cream)/i.test(lower)) {
     return 'frozen'
-  }
-  if (/(flour|sugar|rice|pasta|oil|spice|salt|pepper|bread|broth|stock|sauce|vinegar|soy sauce|honey|syrup)/i.test(lower)) {
-    return 'pantry'
   }
 
   // Default to 'pantry' for uncategorized items (matches database constraint)
@@ -184,11 +191,13 @@ export async function extractReceiptFromImage(
       throw new Error('Invalid JSON response from Claude Vision')
     }
 
-    // Auto-categorize items
+    // Apply fallback categorization only for items without a category
+    // Claude should handle categorization in the prompt, but this is a safety net
     if (receipt.items) {
       receipt.items = receipt.items.map(item => ({
         ...item,
-        category: item.category || categorizeItem(item.name)
+        category: item.category || fallbackCategorizeItem(item.name),
+        is_food: item.is_food !== undefined ? item.is_food : true // Default to true if not specified
       }))
     }
 
