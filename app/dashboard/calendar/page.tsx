@@ -222,11 +222,12 @@ export default function CalendarPage() {
     }
 
     // First, create or update the meal plan
+    // Set recipe_id to the first recipe to satisfy the constraint
     const { data: mealPlan, error: mealError } = await supabase
       .from('meal_plans')
       .upsert({
         family_id: familyId,
-        recipe_id: null, // We're using meal_plan_recipes table now
+        recipe_id: recipeIds[0], // Set to first recipe to satisfy constraint
         planned_date: date,
         meal_type: mealType,
         guest_count: guestCount,
