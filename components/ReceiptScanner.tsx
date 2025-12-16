@@ -111,14 +111,32 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     setCostUsd(null)
 
     try {
+      console.log('[ReceiptScanner] Starting image compression...', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      })
+
       // Compress/resize image automatically (especially important for mobile photos)
       const compressedDataUrl = await compressImage(file)
+
+      console.log('[ReceiptScanner] Image compressed successfully', {
+        originalSize: file.size,
+        compressedSize: compressedDataUrl.length,
+        compressionRatio: ((1 - compressedDataUrl.length / file.size) * 100).toFixed(1) + '%'
+      })
 
       setPreviewUrl(compressedDataUrl)
       setEnhancedImageUrl(compressedDataUrl) // Initialize with compressed version
       setShowEnhancer(true) // Show enhancement UI
     } catch (err: any) {
-      console.error('File reading error:', err)
+      console.error('[ReceiptScanner] File reading/compression error:', {
+        error: err,
+        message: err.message,
+        stack: err.stack,
+        fileName: file.name,
+        fileSize: file.size
+      })
       setError('Failed to process image. Please try again.')
     }
   }
@@ -135,6 +153,12 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     setShowEnhancer(false)
 
     try {
+      console.log('[ReceiptScanner] Starting receipt scan...', {
+        imageDataLength: enhancedImageUrl.length,
+        familyId,
+        timestamp: new Date().toISOString()
+      })
+
       setProgress(30)
 
       // Call Claude API with enhanced image data and family context
@@ -148,7 +172,21 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
         }),
       })
 
+      console.log('[ReceiptScanner] API response received', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      })
+
       const claudeResult = await response.json()
+
+      console.log('[ReceiptScanner] API result parsed', {
+        success: claudeResult.success,
+        hasReceipt: !!claudeResult.receipt,
+        error: claudeResult.error,
+        itemCount: claudeResult.receipt?.items?.length
+      })
+
       setProgress(90)
 
       if (claudeResult.success && claudeResult.receipt) {
@@ -161,15 +199,30 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
         setTokensUsed(claudeResult.tokens_used)
         setCostUsd(claudeResult.cost_usd)
         setShowReview(true)
+
+        console.log('[ReceiptScanner] Receipt extraction successful', {
+          storeName: claudeResult.receipt.store_name,
+          itemCount: claudeResult.receipt.items.length,
+          confidence: claudeResult.confidence
+        })
       } else {
+        console.error('[ReceiptScanner] Receipt extraction failed', {
+          error: claudeResult.error,
+          fullResult: claudeResult
+        })
         setError(claudeResult.error || 'Failed to extract receipt from image')
       }
 
       setProgress(100)
       setProcessing(false)
     } catch (err: any) {
-      console.error('Receipt scanning error:', err)
-      setError('Failed to process receipt. Please try again.')
+      console.error('[ReceiptScanner] Receipt scanning exception:', {
+        error: err,
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      })
+      setError(`Failed to process receipt: ${err.message || 'Unknown error'}. Please try again.`)
       setProcessing(false)
     }
   }
