@@ -35,6 +35,7 @@ export type ExtractedReceipt = {
   total: number
   payment_method?: string
   receipt_number?: string
+  quality_warnings?: string[] // Quality issues detected during extraction
 }
 
 export type ReceiptExtractionResult = {
