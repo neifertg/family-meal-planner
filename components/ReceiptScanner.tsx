@@ -245,6 +245,11 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       return
     }
 
+    if (!familyId) {
+      alert('You must be part of a family to save receipts. Please create or join a family first.')
+      return
+    }
+
     const approvedReceipt: ExtractedReceipt = {
       ...extractedReceipt,
       items: editableItems,
@@ -319,6 +324,23 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
 
   return (
     <div className="space-y-4">
+      {/* No Family Warning */}
+      {!familyId && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+          <div className="flex items-start gap-3">
+            <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="font-semibold text-red-900">Cannot Save Receipts</p>
+              <p className="text-sm text-red-800 mt-1">
+                You must be part of a family to save receipts. Please create or join a family first from your profile settings.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Upload Button */}
       {!previewUrl && !showReview && (
         <div className="border-2 border-dashed border-green-300 rounded-lg p-6 hover:border-green-400 transition-colors">
@@ -356,13 +378,17 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                 accept="image/*"
                 onChange={handleFileSelect}
                 className="hidden"
-                disabled={processing}
+                disabled={processing || !familyId}
               />
               <label
                 htmlFor="receipt-photo"
-                className="block w-full px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer text-center"
+                className={`block w-full px-4 py-2.5 ${
+                  familyId
+                    ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 cursor-pointer'
+                    : 'bg-gray-400 cursor-not-allowed'
+                } text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg text-center`}
               >
-                Choose Receipt Image
+                {familyId ? 'Choose Receipt Image' : 'Family Required to Scan'}
               </label>
             </div>
           </div>
