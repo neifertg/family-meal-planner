@@ -53,6 +53,15 @@ export default async function DashboardPage() {
       recipes (
         id,
         name
+      ),
+      meal_plan_recipes (
+        id,
+        recipe_id,
+        display_order,
+        recipes (
+          id,
+          name
+        )
       )
     `)
     .eq('planned_date', yesterdayDate)
