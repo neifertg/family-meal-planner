@@ -46,6 +46,53 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     if (data && data.length > 0) setFamilyId(data[0].family_id)
   }
 
+  const compressImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          // Calculate new dimensions to keep image under reasonable size
+          // Target max dimension of 2000px (good balance for receipt text readability)
+          const maxDimension = 2000
+          let width = img.width
+          let height = img.height
+
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = (height / width) * maxDimension
+              width = maxDimension
+            } else {
+              width = (width / height) * maxDimension
+              height = maxDimension
+            }
+          }
+
+          // Create canvas and draw resized image
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'))
+            return
+          }
+
+          ctx.drawImage(img, 0, 0, width, height)
+
+          // Convert to JPEG with 0.9 quality for good balance of size/quality
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.9)
+          resolve(compressedDataUrl)
+        }
+        img.onerror = () => reject(new Error('Failed to load image'))
+        img.src = e.target?.result as string
+      }
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsDataURL(file)
+    })
+  }
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -53,12 +100,6 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     // Validate file type
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file')
-      return
-    }
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image must be smaller than 10MB')
       return
     }
 
@@ -70,18 +111,15 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
     setCostUsd(null)
 
     try {
-      // Create preview
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string
-        setPreviewUrl(dataUrl)
-        setEnhancedImageUrl(dataUrl) // Initialize with original
-        setShowEnhancer(true) // Show enhancement UI
-      }
-      reader.readAsDataURL(file)
+      // Compress/resize image automatically (especially important for mobile photos)
+      const compressedDataUrl = await compressImage(file)
+
+      setPreviewUrl(compressedDataUrl)
+      setEnhancedImageUrl(compressedDataUrl) // Initialize with compressed version
+      setShowEnhancer(true) // Show enhancement UI
     } catch (err: any) {
       console.error('File reading error:', err)
-      setError('Failed to read file. Please try again.')
+      setError('Failed to process image. Please try again.')
     }
   }
 
