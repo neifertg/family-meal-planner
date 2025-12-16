@@ -23,6 +23,8 @@ export type ReceiptItem = {
   position_percent?: number // Vertical position as percentage (0-100) from top of receipt
   bounding_box?: BoundingBox // Coordinates for highlighting on receipt image
   cropped_image?: string   // Base64 data URL of cropped receipt segment showing this item
+  consolidated_count?: number // Number of duplicate items that were merged into this one
+  consolidated_details?: string // Explanation of what was consolidated (e.g., "Combined 3 separate entries")
 }
 
 export type ExtractedReceipt = {
