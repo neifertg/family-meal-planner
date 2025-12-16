@@ -23,6 +23,8 @@ Extract the following information:
   - source_text (string): EXACT text from the receipt for this item (including any codes/abbreviations)
   - line_number (number): Approximate line number where this item appears on the receipt
   - position_percent (number): Vertical position of this item as a percentage (0-100) from top of receipt to bottom
+  - consolidated_count (number): If this item was created by merging duplicates, how many separate entries were combined (e.g., 2 or 3)
+  - consolidated_details (string): If consolidated, brief explanation (e.g., "Combined 2 separate banana purchases" or "Merged 3 chicken breast entries")
 - subtotal (number): Subtotal before tax
 - tax (number): Tax amount
 - total (number): Total amount paid
@@ -74,9 +76,10 @@ DUPLICATE CONSOLIDATION:
 - Combine quantities: If "Chicken Breast" appears twice (2 lb and 1.5 lb), create one entry with quantity "3.5 lb"
 - Sum prices: Add all prices for duplicate items
 - Keep the most complete name if descriptions vary slightly
+- IMPORTANT: When consolidating duplicates, include consolidated_count and consolidated_details fields
 - Examples:
-  * "BANANAS 2 lb @ $0.59/lb = $1.18" and "BANANAS 1.5 lb @ $0.59/lb = $0.89" → Single entry: name: "Yellow Banana", quantity: "3.5 lb", price: 2.07, unit_price: 0.59
-  * "ORGANIC MILK $4.99" and "ORGANIC MILK $4.99" → Single entry: name: "Organic Milk", quantity: "2", price: 9.98, unit_price: 4.99
+  * "BANANAS 2 lb @ $0.59/lb = $1.18" and "BANANAS 1.5 lb @ $0.59/lb = $0.89" → Single entry: name: "Yellow Banana", quantity: "3.5 lb", price: 2.07, unit_price: 0.59, consolidated_count: 2, consolidated_details: "Combined 2 separate banana purchases"
+  * "ORGANIC MILK $4.99" and "ORGANIC MILK $4.99" → Single entry: name: "Organic Milk", quantity: "2", price: 9.98, unit_price: 4.99, consolidated_count: 2, consolidated_details: "Merged 2 identical milk purchases"
 
 RECEIPT QUALITY ASSESSMENT:
 - Check image orientation: If text appears upside down or sideways, add to quality_warnings: "Image appears upside down" or "Image appears rotated 90 degrees"
