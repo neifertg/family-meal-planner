@@ -37,6 +37,7 @@ export default function MealConfirmationNotification({
 }: MealConfirmationNotificationProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
+  const [selectedMealIds, setSelectedMealIds] = useState<Set<string>>(new Set())
   const supabase = createClient()
 
   useEffect(() => {
@@ -63,7 +64,17 @@ export default function MealConfirmationNotification({
     checkShouldShow()
   }, [yesterdayMeals])
 
-  const handleConfirmation = async (madeMeals: boolean) => {
+  const toggleMeal = (mealId: string) => {
+    const newSelected = new Set(selectedMealIds)
+    if (newSelected.has(mealId)) {
+      newSelected.delete(mealId)
+    } else {
+      newSelected.add(mealId)
+    }
+    setSelectedMealIds(newSelected)
+  }
+
+  const handleConfirmation = async () => {
     setIsConfirming(true)
 
     try {
@@ -73,11 +84,11 @@ export default function MealConfirmationNotification({
 
       // Store confirmation in localStorage to avoid re-asking
       const storageKey = `meal_confirmation_${yesterdayDate}`
-      localStorage.setItem(storageKey, madeMeals ? 'yes' : 'no')
+      localStorage.setItem(storageKey, 'confirmed')
 
-      // If meals were made, update inventory levels and mark meals as completed
-      if (madeMeals) {
-        const mealIds = yesterdayMeals.map(meal => meal.id)
+      // If any meals were made, update inventory levels and mark those meals as completed
+      if (selectedMealIds.size > 0) {
+        const mealIds = Array.from(selectedMealIds)
 
         const response = await fetch('/api/meals/confirm', {
           method: 'POST',
@@ -160,12 +171,19 @@ export default function MealConfirmationNotification({
                 ? [...meal.meal_plan_recipes].sort((a, b) => a.display_order - b.display_order)
                 : []
 
+              const isSelected = selectedMealIds.has(meal.id)
+
               return (
-                <div
+                <label
                   key={meal.id}
-                  className="flex items-start gap-2 text-sm text-gray-700"
+                  className="flex items-start gap-3 text-sm text-gray-700 p-3 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors border-2 border-transparent hover:border-blue-200"
                 >
-                  <span className="inline-block w-2 h-2 bg-blue-600 rounded-full mt-1.5"></span>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleMeal(meal.id)}
+                    className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
+                  />
                   <div className="flex-1">
                     <span className="font-medium capitalize">{meal.meal_type}:</span>
                     {isAdhoc ? (
@@ -186,29 +204,32 @@ export default function MealConfirmationNotification({
                       <span className="ml-1">{meal.recipes?.name || 'Unknown Meal'}</span>
                     )}
                   </div>
-                </div>
+                </label>
               )
             })}
           </div>
 
           <p className="text-sm text-gray-600 mb-4">
-            This helps us track when to update your inventory levels.
+            {selectedMealIds.size > 0
+              ? `Selected ${selectedMealIds.size} meal${selectedMealIds.size !== 1 ? 's' : ''}. This will update your inventory levels.`
+              : 'Select the meals you made to update your inventory levels.'
+            }
           </p>
 
           <div className="flex gap-3">
             <button
-              onClick={() => handleConfirmation(true)}
+              onClick={handleConfirmation}
               disabled={isConfirming}
               className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all font-medium shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isConfirming ? 'Confirming...' : 'Yes, I made them'}
+              {isConfirming ? 'Confirming...' : selectedMealIds.size > 0 ? 'Confirm' : 'Skip'}
             </button>
             <button
-              onClick={() => handleConfirmation(false)}
+              onClick={() => setIsVisible(false)}
               disabled={isConfirming}
               className="px-6 py-2 bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-lg hover:from-gray-500 hover:to-gray-600 transition-all font-medium shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isConfirming ? 'Confirming...' : 'No, I didn\'t'}
+              Dismiss
             </button>
           </div>
         </div>
