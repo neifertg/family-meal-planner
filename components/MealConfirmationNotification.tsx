@@ -3,15 +3,27 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-interface YesterdayMeal {
+interface MealPlanRecipe {
   id: string
   recipe_id: string
-  meal_type: string
-  planned_date: string
+  display_order: number
   recipes: {
     id: string
     name: string
   }
+}
+
+interface YesterdayMeal {
+  id: string
+  recipe_id: string | null
+  meal_type: string
+  planned_date: string
+  adhoc_meal_name: string | null
+  recipes: {
+    id: string
+    name: string
+  } | null
+  meal_plan_recipes: MealPlanRecipe[]
 }
 
 interface MealConfirmationNotificationProps {
@@ -137,16 +149,46 @@ export default function MealConfirmationNotification({
           </p>
 
           <div className="mb-4 space-y-2">
-            {yesterdayMeals.map((meal) => (
-              <div
-                key={meal.id}
-                className="flex items-center gap-2 text-sm text-gray-700"
-              >
-                <span className="inline-block w-2 h-2 bg-blue-600 rounded-full"></span>
-                <span className="font-medium capitalize">{meal.meal_type}:</span>
-                <span>{meal.recipes?.name || 'Unknown Recipe'}</span>
-              </div>
-            ))}
+            {yesterdayMeals.map((meal) => {
+              // Determine meal display based on type
+              const isAdhoc = meal.adhoc_meal_name !== null
+              const hasMultipleRecipes = meal.meal_plan_recipes && meal.meal_plan_recipes.length > 1
+              const hasRecipes = meal.meal_plan_recipes && meal.meal_plan_recipes.length > 0
+
+              // Sort recipes by display_order
+              const sortedRecipes = hasRecipes
+                ? [...meal.meal_plan_recipes].sort((a, b) => a.display_order - b.display_order)
+                : []
+
+              return (
+                <div
+                  key={meal.id}
+                  className="flex items-start gap-2 text-sm text-gray-700"
+                >
+                  <span className="inline-block w-2 h-2 bg-blue-600 rounded-full mt-1.5"></span>
+                  <div className="flex-1">
+                    <span className="font-medium capitalize">{meal.meal_type}:</span>
+                    {isAdhoc ? (
+                      <span className="ml-1">{meal.adhoc_meal_name}</span>
+                    ) : hasRecipes ? (
+                      hasMultipleRecipes ? (
+                        <div className="ml-1">
+                          {sortedRecipes.map((mpr, index) => (
+                            <div key={mpr.id}>
+                              {index + 1}. {mpr.recipes.name}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="ml-1">{sortedRecipes[0].recipes.name}</span>
+                      )
+                    ) : (
+                      <span className="ml-1">{meal.recipes?.name || 'Unknown Meal'}</span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           <p className="text-sm text-gray-600 mb-4">
