@@ -177,9 +177,23 @@ export async function extractReceiptFromImage(
 
   } catch (error: any) {
     console.error('Claude Vision extraction error:', error)
+
+    // Provide more specific error messages
+    let errorMessage = 'Failed to extract receipt from image'
+
+    if (error.status === 401 || error.status === 403) {
+      errorMessage = 'Authentication error with Claude API. Please check API key configuration.'
+    } else if (error.status === 429) {
+      errorMessage = 'Rate limit exceeded. Please try again in a moment.'
+    } else if (error.status === 400) {
+      errorMessage = 'Invalid image format. Claude Vision could not process this image.'
+    } else if (error.message) {
+      errorMessage = `Claude Vision error: ${error.message}`
+    }
+
     return {
       success: false,
-      error: error.message || 'Failed to extract receipt from image',
+      error: errorMessage,
     }
   }
 }
