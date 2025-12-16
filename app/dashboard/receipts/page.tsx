@@ -190,7 +190,10 @@ export default function ReceiptsPage() {
   }
 
   const handleReceiptProcessed = async (receipt: ExtractedReceipt, applyToBudget: boolean) => {
-    if (!familyId) return
+    if (!familyId) {
+      alert('You must be part of a family to save receipts. Please create or join a family first.')
+      return
+    }
 
     try {
       // The receipt scanner already handles saving to the database
