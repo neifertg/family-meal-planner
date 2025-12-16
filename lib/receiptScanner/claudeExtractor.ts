@@ -66,7 +66,7 @@ function categorizeItem(itemName: string): string {
   if (/(milk|cheese|yogurt|butter|cream|dairy|egg)/i.test(lower)) {
     return 'dairy'
   }
-  if (/(chicken|beef|pork|fish|salmon|meat|turkey|lamb|shrimp|bacon|sausage)/i.test(lower)) {
+  if (/(chicken|beef|pork|fish|salmon|meat|turkey|lamb|shrimp|bacon|sausage|steak|salami|hotdog|hot dog|ham|ribs|ground beef|ground turkey|ground pork|brisket|roast|chuck|sirloin|tenderloin|filet|ribeye|t-bone|drumstick|thigh|breast|wing|crab|lobster|tuna|cod|tilapia|mahi|halibut|swordfish|trout|catfish|pepperoni|chorizo|bratwurst|kielbasa|bologna|pastrami|corned beef|prosciutto|deli meat|lunch meat)/i.test(lower)) {
     return 'meat'
   }
   if (/(frozen|ice cream)/i.test(lower)) {
