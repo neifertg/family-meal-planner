@@ -17,16 +17,9 @@ CREATE INDEX IF NOT EXISTS idx_meal_plan_recipes_recipe ON meal_plan_recipes(rec
 
 -- Remove the check constraint that enforced either recipe_id OR adhoc_meal_name
 -- This allows meals to have multiple recipes AND/OR adhoc ingredients
+-- The new system uses the meal_plan_recipes junction table, so we don't need strict constraints
 ALTER TABLE meal_plans DROP CONSTRAINT IF EXISTS meal_plans_type_check;
-
--- Add new check constraint that's more flexible:
--- A meal must have at least ONE of: recipe_id, adhoc_meal_name, or entries in meal_plan_recipes
--- Note: We can't enforce meal_plan_recipes in a check constraint, so we'll handle validation in the app
-ALTER TABLE meal_plans ADD CONSTRAINT meal_plans_has_content_check
-  CHECK (
-    recipe_id IS NOT NULL OR
-    adhoc_meal_name IS NOT NULL
-  );
+ALTER TABLE meal_plans DROP CONSTRAINT IF EXISTS meal_plans_has_content_check;
 
 -- Migrate existing recipe_id values to the meal_plan_recipes table
 INSERT INTO meal_plan_recipes (meal_plan_id, recipe_id, display_order)
