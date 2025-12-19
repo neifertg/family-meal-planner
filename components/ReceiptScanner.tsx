@@ -28,6 +28,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const [tokensUsed, setTokensUsed] = useState<number | null>(null)
   const [costUsd, setCostUsd] = useState<number | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
+  const [familyIdLoading, setFamilyIdLoading] = useState(true)
   const [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null)
   const [applyToBudget, setApplyToBudget] = useState(true) // Default to true - most users want to track receipts in budget
 
@@ -38,12 +39,26 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   }, [])
 
   const loadFamilyId = async () => {
-    const { data } = await supabase
+    setFamilyIdLoading(true)
+    const { data, error } = await supabase
       .from('family_members')
       .select('family_id')
       .limit(1)
+      .maybeSingle()
 
-    if (data && data.length > 0) setFamilyId(data[0].family_id)
+    if (error) {
+      console.error('[ReceiptScanner] Error loading family_id:', error)
+      setFamilyIdLoading(false)
+      return
+    }
+
+    if (data?.family_id) {
+      console.log('[ReceiptScanner] Family ID loaded:', data.family_id)
+      setFamilyId(data.family_id)
+    } else {
+      console.warn('[ReceiptScanner] No family_id found - user may not be a family member')
+    }
+    setFamilyIdLoading(false)
   }
 
   const compressImage = async (file: File): Promise<string> => {
@@ -324,8 +339,8 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
 
   return (
     <div className="space-y-4">
-      {/* No Family Warning */}
-      {!familyId && (
+      {/* No Family Warning - Only show after loading completes */}
+      {!familyIdLoading && !familyId && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
           <div className="flex items-start gap-3">
             <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
