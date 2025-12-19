@@ -19,9 +19,31 @@ export type ParsedQuantity = {
  * - "2 cups flour" -> { value: 2, unit: "cups", ingredient: "flour" }
  * - "1/2 lb ground beef" -> { value: 0.5, unit: "lb", ingredient: "ground beef" }
  * - "3 eggs" -> { value: 3, unit: "whole", ingredient: "eggs" }
+ * - "3-4 carrots" -> { value: 3.5, unit: "whole", ingredient: "carrots" } (takes average)
+ * - "2-3 cups flour" -> { value: 2.5, unit: "cups", ingredient: "flour" }
  */
 export function parseIngredientQuantity(ingredient: string): ParsedQuantity | null {
   const text = ingredient.trim()
+
+  // Pattern to match ranges: "3-4", "2-3", etc.
+  // Also handles: "2-3 cups flour" or "3-4 carrots"
+  const rangePattern = /^(\d+\.?\d*)\s*-\s*(\d+\.?\d*)\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|whole|piece|pieces)?\s*(.+)?/i
+
+  const rangeMatch = text.match(rangePattern)
+  if (rangeMatch) {
+    const min = parseFloat(rangeMatch[1])
+    const max = parseFloat(rangeMatch[2])
+    const average = (min + max) / 2
+    const unit = rangeMatch[3]?.toLowerCase() || 'whole'
+    const ingredientName = rangeMatch[4]?.trim() || text
+
+    return {
+      value: average,
+      unit,
+      ingredient: ingredientName,
+      originalText: text
+    }
+  }
 
   // Pattern to match: [number/fraction] [unit] [ingredient]
   const pattern = /^(\d+\.?\d*|\d*\.?\d+|(\d+\s+)?\d+\/\d+)\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|whole|piece|pieces)?s?\s+(.+)/i
@@ -87,10 +109,10 @@ export function parseIngredientQuantity(ingredient: string): ParsedQuantity | nu
 /**
  * Scale an ingredient quantity based on servings ratio
  *
- * @param ingredient - Original ingredient string (e.g., "2 cups flour")
+ * @param ingredient - Original ingredient string (e.g., "2 cups flour", "3-4 carrots")
  * @param baseServings - Recipe's base servings (from recipe.servings)
  * @param targetServings - Number of people to serve (familyMemberCount + guestCount)
- * @returns Scaled ingredient string (e.g., "4 cups flour")
+ * @returns Scaled ingredient string (e.g., "4 cups flour", "6-8 carrots")
  */
 export function scaleIngredient(
   ingredient: string,
@@ -102,6 +124,48 @@ export function scaleIngredient(
     return ingredient
   }
 
+  const text = ingredient.trim()
+
+  // Don't scale descriptive/imprecise amounts
+  const nonScalablePatterns = [
+    /^(a |an |some |to taste|salt and pepper|garnish|as needed|optional)/i,
+    /^(pinch|dash|handful|sprinkle|generous)/i,
+  ]
+
+  for (const pattern of nonScalablePatterns) {
+    if (pattern.test(text)) {
+      return ingredient // Return as-is
+    }
+  }
+
+  const scaleFactor = targetServings / baseServings
+
+  // Check if this is a range (e.g., "3-4 carrots" or "2-3 cups flour")
+  const rangePattern = /^(\d+\.?\d*)\s*-\s*(\d+\.?\d*)\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|whole|piece|pieces)?\s*(.+)?/i
+  const rangeMatch = text.match(rangePattern)
+
+  if (rangeMatch) {
+    const min = parseFloat(rangeMatch[1])
+    const max = parseFloat(rangeMatch[2])
+    const scaledMin = min * scaleFactor
+    const scaledMax = max * scaleFactor
+    const unit = rangeMatch[3] || ''
+    const ingredientName = rangeMatch[4]?.trim() || ''
+
+    // Format the scaled range
+    const formattedMin = formatQuantity(scaledMin)
+    const formattedMax = formatQuantity(scaledMax)
+
+    // Reconstruct with range
+    if (unit) {
+      const pluralUnit = scaledMax > 1 && !unit.endsWith('s') ? `${unit}s` : unit
+      return `${formattedMin}-${formattedMax} ${pluralUnit} ${ingredientName}`.trim()
+    } else {
+      return `${formattedMin}-${formattedMax} ${ingredientName}`.trim()
+    }
+  }
+
+  // Not a range, parse normally
   const parsed = parseIngredientQuantity(ingredient)
 
   // If we couldn't parse it, return original
@@ -110,7 +174,6 @@ export function scaleIngredient(
   }
 
   // Calculate scaled quantity
-  const scaleFactor = targetServings / baseServings
   const scaledValue = parsed.value * scaleFactor
 
   // Format the scaled value nicely
