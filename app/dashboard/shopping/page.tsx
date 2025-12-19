@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import ReceiptScanner from '@/components/ReceiptScanner'
 import { ExtractedReceipt } from '@/lib/receiptScanner/types'
 import { estimateExpirationDate } from '@/lib/receiptScanner/expirationEstimator'
+import { scaleIngredient, calculateTargetServings } from '@/lib/recipeScaling'
 
 type GroceryItem = {
   id: string
@@ -187,14 +188,21 @@ export default function ShoppingListPage() {
 
       console.log('Fetching meal plans from', today, 'to', weekLaterStr)
 
+      // Fetch meal plans with meal_plan_recipes junction table
       const { data: mealPlans, error: mealPlansError } = await supabase
         .from('meal_plans')
         .select(`
           *,
-          recipes (
+          meal_plan_recipes (
             id,
-            name,
-            ingredients
+            recipe_id,
+            display_order,
+            recipes (
+              id,
+              name,
+              ingredients,
+              servings
+            )
           )
         `)
         .gte('planned_date', today)
@@ -216,6 +224,14 @@ export default function ShoppingListPage() {
         return
       }
 
+      // Get family member count for scaling calculation
+      const { data: familyMembers } = await supabase
+        .from('family_members')
+        .select('id')
+        .eq('family_id', familyId)
+
+      const familyMemberCount = familyMembers?.length || 1
+
       // Clear existing auto-generated items (those linked to recipes)
       await supabase
         .from('grocery_list_items')
@@ -223,38 +239,51 @@ export default function ShoppingListPage() {
         .eq('family_id', familyId)
         .not('recipe_id', 'is', null)
 
-      // Aggregate ingredients from all recipes and adhoc meals with smart consolidation
+      // Aggregate ingredients from all recipes and adhoc meals with smart consolidation and SCALING
       const ingredientMap = new Map<string, { quantities: string[]; recipeIds: Set<string> }>()
 
       mealPlans.forEach((plan: any) => {
-        // Handle recipe-based meals
-        const recipe = plan.recipes
-        if (recipe && recipe.ingredients) {
-          const ingredients = Array.isArray(recipe.ingredients)
-            ? recipe.ingredients
-            : recipe.ingredients.ingredients || []
+        // Handle recipe-based meals with SCALING
+        if (plan.meal_plan_recipes && Array.isArray(plan.meal_plan_recipes)) {
+          plan.meal_plan_recipes.forEach((mpr: any) => {
+            const recipe = mpr.recipes
+            if (recipe && recipe.ingredients) {
+              const ingredients = Array.isArray(recipe.ingredients)
+                ? recipe.ingredients
+                : recipe.ingredients.ingredients || []
 
-          ingredients.forEach((ingredient: string) => {
-            const parsed = parseIngredient(ingredient)
-            const existingKeys = Array.from(ingredientMap.keys())
+              // Calculate target servings based on family members + guests
+              const targetServings = calculateTargetServings(familyMemberCount, plan.guest_count || 0)
+              const baseServings = recipe.servings || targetServings // Use recipe servings or default to target
 
-            // Use fuzzy matching to find similar ingredients
-            const itemKey = findOrCreateIngredientKey(parsed.item, existingKeys)
+              console.log(`Scaling recipe "${recipe.name}": ${baseServings} servings -> ${targetServings} servings`)
 
-            if (ingredientMap.has(itemKey)) {
-              const existing = ingredientMap.get(itemKey)!
-              existing.quantities.push(parsed.fullText)
-              existing.recipeIds.add(recipe.id)
-            } else {
-              ingredientMap.set(itemKey, {
-                quantities: [parsed.fullText],
-                recipeIds: new Set([recipe.id])
+              ingredients.forEach((ingredient: string) => {
+                // Scale ingredient based on servings
+                const scaledIngredient = scaleIngredient(ingredient, baseServings, targetServings)
+
+                const parsed = parseIngredient(scaledIngredient)
+                const existingKeys = Array.from(ingredientMap.keys())
+
+                // Use fuzzy matching to find similar ingredients
+                const itemKey = findOrCreateIngredientKey(parsed.item, existingKeys)
+
+                if (ingredientMap.has(itemKey)) {
+                  const existing = ingredientMap.get(itemKey)!
+                  existing.quantities.push(parsed.fullText)
+                  existing.recipeIds.add(recipe.id)
+                } else {
+                  ingredientMap.set(itemKey, {
+                    quantities: [parsed.fullText],
+                    recipeIds: new Set([recipe.id])
+                  })
+                }
               })
             }
           })
         }
 
-        // Handle adhoc meal ingredients
+        // Handle adhoc meal ingredients (no scaling needed - user provides exact quantities)
         if (plan.adhoc_meal_name && plan.adhoc_ingredients) {
           const adhocIngredients = Array.isArray(plan.adhoc_ingredients) ? plan.adhoc_ingredients : []
 
@@ -301,7 +330,7 @@ export default function ShoppingListPage() {
       if (itemsToInsert.length > 0) {
         const { error: insertError } = await supabase
           .from('grocery_list_items')
-          .insert(itemsToInsert)
+          .insert(itemsToInsert as any)
 
         if (insertError) {
           console.error('Error inserting items:', insertError)
