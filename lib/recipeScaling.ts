@@ -193,41 +193,74 @@ export function scaleIngredient(
 /**
  * Format a quantity value nicely
  * - Whole numbers: "2"
- * - Common fractions: "1/2", "1/4", "3/4", "1/3", "2/3"
- * - Decimals: "1.5", "2.25"
+ * - Common fractions: "1/2", "1/4", "3/4", "1/3", "2/3", "1/8", "3/8", etc.
+ * - Mixed numbers: "1 1/2", "2 3/4"
+ * - Decimals: "1.5", "2.25" (when no good fraction match)
  */
 function formatQuantity(value: number): string {
-  // Check if it's a whole number
-  if (value % 1 === 0) {
-    return value.toString()
+  // Check if it's a whole number (with small tolerance for floating point errors)
+  if (Math.abs(value - Math.round(value)) < 0.001) {
+    return Math.round(value).toString()
   }
 
-  // Try to convert to common fractions
-  const commonFractions: { [key: string]: string } = {
-    '0.25': '1/4',
-    '0.33': '1/3',
-    '0.5': '1/2',
-    '0.66': '2/3',
-    '0.67': '2/3',
-    '0.75': '3/4',
+  // Try to find the best fraction representation
+  const bestFraction = decimalToFraction(value)
+  if (bestFraction) {
+    return bestFraction
   }
 
-  // Check for whole number + fraction (e.g., 1.5 -> "1 1/2")
+  // Fallback to 1 decimal place
+  return value.toFixed(1).replace(/\.0$/, '')
+}
+
+/**
+ * Convert a decimal to a fraction string
+ * Tries common denominators: 2, 3, 4, 8, 16
+ * Returns null if no good match found
+ */
+function decimalToFraction(value: number): string | null {
   const whole = Math.floor(value)
   const decimal = value - whole
-  const decimalStr = decimal.toFixed(2)
 
-  if (whole > 0 && commonFractions[decimalStr]) {
-    return `${whole} ${commonFractions[decimalStr]}`
+  // If essentially zero decimal, just return the whole number
+  if (decimal < 0.001) {
+    return whole.toString()
   }
 
-  // Check for just fraction (e.g., 0.5 -> "1/2")
-  if (commonFractions[decimalStr]) {
-    return commonFractions[decimalStr]
+  // Common denominators to try (in order of preference)
+  const denominators = [2, 4, 8, 3, 16]
+
+  for (const denom of denominators) {
+    // Calculate what the numerator would be
+    const numerator = Math.round(decimal * denom)
+
+    // Check if this gives us a close approximation (within 1%)
+    const reconstructed = numerator / denom
+    const error = Math.abs(reconstructed - decimal)
+
+    if (error < 0.01 && numerator > 0 && numerator < denom) {
+      // Simplify the fraction
+      const gcd = greatestCommonDivisor(numerator, denom)
+      const simplifiedNum = numerator / gcd
+      const simplifiedDenom = denom / gcd
+
+      // Format as mixed number or simple fraction
+      if (whole > 0) {
+        return `${whole} ${simplifiedNum}/${simplifiedDenom}`
+      } else {
+        return `${simplifiedNum}/${simplifiedDenom}`
+      }
+    }
   }
 
-  // Round to 1 decimal place for other values
-  return value.toFixed(1).replace(/\.0$/, '')
+  return null // No good fraction found
+}
+
+/**
+ * Calculate greatest common divisor using Euclidean algorithm
+ */
+function greatestCommonDivisor(a: number, b: number): number {
+  return b === 0 ? a : greatestCommonDivisor(b, a % b)
 }
 
 /**
