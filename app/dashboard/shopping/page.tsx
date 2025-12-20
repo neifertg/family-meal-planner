@@ -686,7 +686,8 @@ export default function ShoppingListPage() {
               className="bg-white hover:bg-white/90 text-emerald-700 font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 inline-flex items-center gap-2 shadow-md"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               Scan Receipt
             </button>
@@ -696,7 +697,7 @@ export default function ShoppingListPage() {
               className="bg-white hover:bg-white/90 disabled:bg-white/50 text-emerald-700 font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 inline-flex items-center gap-2 shadow-md"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
               </svg>
               {generating ? 'Generating...' : 'Generate from Meal Plan'}
             </button>
@@ -1277,7 +1278,7 @@ function getCategoryIcon(category: string) {
     ),
     dairy: (
       <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v1m6-1v1m-8 8h10M6 7h12a1 1 0 011 1v11a2 2 0 01-2 2H7a2 2 0 01-2-2V8a1 1 0 011-1zm6 5v6" />
       </svg>
     ),
     meat: (
@@ -1292,7 +1293,7 @@ function getCategoryIcon(category: string) {
     ),
     pantry: (
       <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2zm0 0h10M9 3v18m6-18v18M5 9h14M5 15h14" />
       </svg>
     )
   }
