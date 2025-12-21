@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { extractReceiptFromImage } from '@/lib/receiptScanner/claudeExtractor'
 import { getVendorLearningExamples, getGeneralLearningExamples } from '@/lib/receiptScanner/learningSystem'
 
+// Increase body size limit for base64 image uploads (default is 4MB)
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+}
+
 /**
  * Receipt Scanning API - CLAUDE VISION ONLY
  *
