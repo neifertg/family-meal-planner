@@ -2,14 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { extractReceiptFromImage } from '@/lib/receiptScanner/claudeExtractor'
 import { getVendorLearningExamples, getGeneralLearningExamples } from '@/lib/receiptScanner/learningSystem'
 
-// Increase body size limit for base64 image uploads (default is 4MB)
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
-}
+// Configure route to handle large payloads (base64 images)
+// For Vercel: maxDuration is max execution time
+// Body size is controlled by Vercel deployment settings
+export const maxDuration = 60 // 60 seconds max execution time
 
 /**
  * Receipt Scanning API - CLAUDE VISION ONLY
