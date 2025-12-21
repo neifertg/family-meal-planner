@@ -244,8 +244,8 @@ export default function MealConfirmationNotification({
 
           <p className="text-sm text-gray-600 mb-4">
             {selectedMealIds.size > 0
-              ? `Selected ${selectedMealIds.size} meal${selectedMealIds.size !== 1 ? 's' : ''}. This will update your inventory levels.`
-              : 'Select the meals you made to update your inventory levels.'
+              ? `You made ${selectedMealIds.size} meal${selectedMealIds.size !== 1 ? 's' : ''}. Click Confirm to update your inventory levels.`
+              : 'Answer Yes or No for each meal, then click Confirm.'
             }
           </p>
 
@@ -255,14 +255,14 @@ export default function MealConfirmationNotification({
               disabled={isConfirming}
               className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all font-medium shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isConfirming ? 'Confirming...' : selectedMealIds.size > 0 ? 'Confirm' : 'Skip'}
+              {isConfirming ? 'Confirming...' : 'Confirm'}
             </button>
             <button
               onClick={() => setIsVisible(false)}
               disabled={isConfirming}
-              className="px-6 py-2 bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-lg hover:from-gray-500 hover:to-gray-600 transition-all font-medium shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Dismiss
+              Cancel
             </button>
           </div>
         </div>
