@@ -159,7 +159,7 @@ export default function MealConfirmationNotification({
             You had {yesterdayMeals.length} meal{yesterdayMeals.length !== 1 ? 's' : ''} planned for {yesterdayFormatted}:
           </p>
 
-          <div className="mb-4 space-y-2">
+          <div className="mb-4 space-y-3">
             {yesterdayMeals.map((meal) => {
               // Determine meal display based on type
               const isAdhoc = meal.adhoc_meal_name !== null
@@ -174,37 +174,70 @@ export default function MealConfirmationNotification({
               const isSelected = selectedMealIds.has(meal.id)
 
               return (
-                <label
+                <div
                   key={meal.id}
-                  className="flex items-start gap-3 text-sm text-gray-700 p-3 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors border-2 border-transparent hover:border-blue-200"
+                  className={`p-4 rounded-lg transition-all border-2 ${
+                    isSelected === undefined
+                      ? 'bg-white border-gray-200'
+                      : isSelected
+                      ? 'bg-green-50 border-green-400'
+                      : 'bg-gray-50 border-gray-300'
+                  }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleMeal(meal.id)}
-                    className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
-                  />
-                  <div className="flex-1">
-                    <span className="font-medium capitalize">{meal.meal_type}:</span>
-                    {isAdhoc ? (
-                      <span className="ml-1">{meal.adhoc_meal_name}</span>
-                    ) : hasRecipes ? (
-                      hasMultipleRecipes ? (
-                        <div className="ml-1">
-                          {sortedRecipes.map((mpr, index) => (
-                            <div key={mpr.id}>
-                              {index + 1}. {mpr.recipes.name}
-                            </div>
-                          ))}
-                        </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <span className="font-semibold capitalize text-gray-900">{meal.meal_type}:</span>
+                      {isAdhoc ? (
+                        <span className="ml-1 text-gray-700">{meal.adhoc_meal_name}</span>
+                      ) : hasRecipes ? (
+                        hasMultipleRecipes ? (
+                          <div className="ml-1 text-gray-700">
+                            {sortedRecipes.map((mpr, index) => (
+                              <div key={mpr.id}>
+                                {index + 1}. {mpr.recipes.name}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="ml-1 text-gray-700">{sortedRecipes[0].recipes.name}</span>
+                        )
                       ) : (
-                        <span className="ml-1">{sortedRecipes[0].recipes.name}</span>
-                      )
-                    ) : (
-                      <span className="ml-1">{meal.recipes?.name || 'Unknown Meal'}</span>
-                    )}
+                        <span className="ml-1 text-gray-700">{meal.recipes?.name || 'Unknown Meal'}</span>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const newSelected = new Set(selectedMealIds)
+                          newSelected.add(meal.id)
+                          setSelectedMealIds(newSelected)
+                        }}
+                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                          isSelected
+                            ? 'bg-green-600 text-white shadow-md'
+                            : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-green-500 hover:bg-green-50'
+                        }`}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        onClick={() => {
+                          const newSelected = new Set(selectedMealIds)
+                          newSelected.delete(meal.id)
+                          setSelectedMealIds(newSelected)
+                        }}
+                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                          isSelected === false || (!selectedMealIds.has(meal.id))
+                            ? 'bg-gray-500 text-white shadow-md'
+                            : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        No
+                      </button>
+                    </div>
                   </div>
-                </label>
+                </div>
               )
             })}
           </div>
