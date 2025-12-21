@@ -617,7 +617,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                           className="absolute left-2 transition-all duration-200 z-10 animate-in fade-in zoom-in"
                           style={{ top: topPercent }}
                         >
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm shadow-lg bg-yellow-400 text-gray-900 ring-4 ring-yellow-300 border-2 border-gray-900">
+                          <div className="flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs shadow-md bg-yellow-400 text-gray-900 ring-2 ring-yellow-300 border border-gray-900">
                             {item.line_number}
                           </div>
                         </div>
