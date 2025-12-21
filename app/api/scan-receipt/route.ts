@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
       headers: Object.fromEntries(request.headers.entries())
     })
 
-    const { imageData, familyId, storeName } = await request.json()
+    const body = await request.json()
+    const { imageData, familyId, storeName } = body
 
     console.log('[scan-receipt] Request parsed', {
       hasImageData: !!imageData,
@@ -34,6 +35,14 @@ export async function POST(request: NextRequest) {
       console.error('[scan-receipt] No image data provided')
       return NextResponse.json(
         { success: false, error: 'No image data provided' },
+        { status: 400 }
+      )
+    }
+
+    if (!familyId) {
+      console.error('[scan-receipt] No family ID provided')
+      return NextResponse.json(
+        { success: false, error: 'Family ID is required' },
         { status: 400 }
       )
     }

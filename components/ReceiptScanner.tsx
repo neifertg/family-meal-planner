@@ -581,7 +581,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                   <img
                     src={previewUrl}
                     alt="Receipt"
-                    className="w-full h-auto max-h-[600px] object-contain border border-gray-300 rounded"
+                    className="w-full h-auto max-h-[400px] md:max-h-[600px] object-contain border border-gray-300 rounded"
                   />
                   {/* Overlay line number markers - only show on hover */}
                   <div className="absolute top-0 left-0 w-full h-full pointer-events-none">

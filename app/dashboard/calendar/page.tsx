@@ -911,8 +911,16 @@ function RecipeSelectionModal({
                 </button>
                 <span className="w-12 text-center font-semibold text-gray-900">{guestCount}</span>
                 <button
-                  onClick={() => setGuestCount(guestCount + 1)}
-                  className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  onClick={() => {
+                    const newCount = guestCount + 1
+                    if (newCount > 50) {
+                      alert('Guest count limit is 50. For larger events, please split into multiple meal plans or contact support.')
+                      return
+                    }
+                    setGuestCount(newCount)
+                  }}
+                  className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  disabled={guestCount >= 50}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

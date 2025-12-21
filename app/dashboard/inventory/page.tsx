@@ -287,8 +287,14 @@ export default function InventoryPage() {
         throw new Error(`Invalid purchase date: ${receipt.purchase_date}`)
       }
 
-      // Process each receipt item
+      // Process each receipt item (skip non-food items)
       for (const receiptItem of receipt.items) {
+        // Skip non-food items (like cleaning supplies, toiletries, etc.)
+        if (receiptItem.category === 'non_food' || !receiptItem.is_food) {
+          console.log(`Skipping non-food item: ${receiptItem.name}`)
+          continue
+        }
+
         // Check if item already exists in inventory
         const existingItem = items.find(item =>
           item.name.toLowerCase() === receiptItem.name.toLowerCase()
