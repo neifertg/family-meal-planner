@@ -19,12 +19,63 @@ type Recipe = {
   estimated_cost_usd: number | null
   cost_per_serving_usd: number | null
   created_at: string
+  average_rating?: number
+  rating_count?: number
   shared_groups?: Array<{
     umbrella_group_id: string
     umbrella_groups: {
       name: string
     }
   }>
+}
+
+// Star rating display component
+function StarRating({ rating, count }: { rating?: number; count?: number }) {
+  if (!rating || !count) return null
+
+  const fullStars = Math.floor(rating)
+  const hasHalfStar = rating % 1 >= 0.5
+
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex">
+        {[...Array(5)].map((_, i) => (
+          <svg
+            key={i}
+            className={`w-4 h-4 ${
+              i < fullStars
+                ? 'text-yellow-400 fill-current'
+                : i === fullStars && hasHalfStar
+                ? 'text-yellow-400'
+                : 'text-gray-300'
+            }`}
+            fill={i < fullStars ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+            />
+            {i === fullStars && hasHalfStar && (
+              <defs>
+                <linearGradient id={`half-${i}`}>
+                  <stop offset="50%" stopColor="currentColor" />
+                  <stop offset="50%" stopColor="transparent" />
+                </linearGradient>
+              </defs>
+            )}
+          </svg>
+        ))}
+      </div>
+      <span className="text-sm font-medium text-gray-700">
+        {rating.toFixed(1)}
+      </span>
+      <span className="text-xs text-gray-500">({count})</span>
+    </div>
+  )
 }
 
 export default function RecipesPage() {
@@ -37,6 +88,7 @@ export default function RecipesPage() {
   const [selectedCuisine, setSelectedCuisine] = useState<string>('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState<'recent' | 'rating' | 'name'>('recent')
   const [showAddToMenuModal, setShowAddToMenuModal] = useState(false)
   const [selectedRecipeForMenu, setSelectedRecipeForMenu] = useState<Recipe | null>(null)
   const [selectedDate, setSelectedDate] = useState('')
@@ -58,6 +110,15 @@ export default function RecipesPage() {
         return
       }
 
+      // Get family ID for ratings lookup
+      const { data: family } = await supabase
+        .from('families')
+        .select('id')
+        .limit(1)
+        .maybeSingle()
+
+      let recipesData: any[] = []
+
       if (selectedGroupId) {
         // Filter recipes by selected umbrella group
         const { data, error } = await supabase
@@ -67,13 +128,14 @@ export default function RecipesPage() {
             shared_groups:recipe_umbrella_group_shares!inner(
               umbrella_group_id,
               umbrella_groups(name)
-            )
+            ),
+            recipe_ratings(rating)
           `)
           .eq('recipe_umbrella_group_shares.umbrella_group_id', selectedGroupId)
           .order('created_at', { ascending: false })
 
         if (error) throw error
-        setRecipes(data || [])
+        recipesData = data || []
       } else {
         // Show all recipes
         const { data, error } = await supabase
@@ -83,7 +145,8 @@ export default function RecipesPage() {
             shared_groups:recipe_umbrella_group_shares(
               umbrella_group_id,
               umbrella_groups(name)
-            )
+            ),
+            recipe_ratings(rating)
           `)
           .order('created_at', { ascending: false })
 
@@ -97,9 +160,26 @@ export default function RecipesPage() {
           }
         })
 
-        const uniqueRecipes = Array.from(recipeMap.values())
-        setRecipes(uniqueRecipes || [])
+        recipesData = Array.from(recipeMap.values())
       }
+
+      // Calculate average ratings for each recipe
+      const recipesWithRatings = recipesData.map((recipe: any) => {
+        const ratings = recipe.recipe_ratings || []
+        const average_rating = ratings.length > 0
+          ? ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / ratings.length
+          : undefined
+        const rating_count = ratings.length
+
+        return {
+          ...recipe,
+          average_rating,
+          rating_count,
+          recipe_ratings: undefined // Remove the raw ratings array from the final object
+        }
+      })
+
+      setRecipes(recipesWithRatings)
     } catch (err: any) {
       console.error('Error loading recipes:', err)
       setError(err.message || 'Failed to load recipes')
@@ -123,9 +203,9 @@ export default function RecipesPage() {
     return unique.sort()
   }, [recipes])
 
-  // Filter recipes based on search and filters
+  // Filter and sort recipes
   const filteredRecipes = useMemo(() => {
-    return recipes.filter(recipe => {
+    const filtered = recipes.filter(recipe => {
       const matchesSearch = searchQuery === '' ||
         recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         recipe.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -135,7 +215,27 @@ export default function RecipesPage() {
 
       return matchesSearch && matchesCuisine && matchesCategory
     })
-  }, [recipes, searchQuery, selectedCuisine, selectedCategory])
+
+    // Sort recipes
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'rating':
+          // Sort by rating (highest first), then by rating count, then by name
+          const ratingA = a.average_rating || 0
+          const ratingB = b.average_rating || 0
+          if (ratingB !== ratingA) return ratingB - ratingA
+          const countA = a.rating_count || 0
+          const countB = b.rating_count || 0
+          if (countB !== countA) return countB - countA
+          return a.name.localeCompare(b.name)
+        case 'name':
+          return a.name.localeCompare(b.name)
+        case 'recent':
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+    })
+  }, [recipes, searchQuery, selectedCuisine, selectedCategory, sortBy])
 
   const clearFilters = () => {
     setSearchQuery('')
@@ -284,6 +384,19 @@ export default function RecipesPage() {
                   </select>
                 </div>
               )}
+
+              {/* Sort By */}
+              <div className="md:w-48">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'recent' | 'rating' | 'name')}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 bg-gradient-to-r from-orange-50 to-rose-50 font-medium"
+                >
+                  <option value="recent">Most Recent</option>
+                  <option value="rating">⭐ Highest Rated</option>
+                  <option value="name">A-Z</option>
+                </select>
+              </div>
 
               {/* Clear Filters */}
               {hasActiveFilters && (
@@ -469,8 +582,18 @@ export default function RecipesPage() {
                     )}
                   </div>
 
+                  {/* Family Rating */}
+                  {recipe.average_rating && recipe.rating_count && (
+                    <div className="mb-3 pb-3 border-b border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-gray-600">Family Rating:</span>
+                        <StarRating rating={recipe.average_rating} count={recipe.rating_count} />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Action Buttons */}
-                  <div className="flex gap-2 pt-3 border-t border-gray-100">
+                  <div className="flex gap-2 pt-3">
                     <Link
                       href={`/dashboard/recipes/${recipe.id}`}
                       className="flex-1 px-3 py-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-lg hover:from-orange-600 hover:to-pink-600 transition-all text-sm font-medium text-center"
