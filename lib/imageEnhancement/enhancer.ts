@@ -329,7 +329,9 @@ export async function enhanceImage(
     }
 
     // Convert back to data URL
-    return canvas.toDataURL('image/png')
+    // Use JPEG with 0.75 quality to match receipt scanner compression
+    // and stay under Vercel's 4.5MB payload limit
+    return canvas.toDataURL('image/jpeg', 0.75)
   } catch (error) {
     console.error('Image enhancement error:', error)
     throw error
