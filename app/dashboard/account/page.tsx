@@ -43,13 +43,26 @@ type FamilyMember = {
   id: string
   family_id: string
   name: string
-  age: number | null
+  birthday: string | null
   photo_url: string | null
   dietary_restrictions: string[] | null
   favorite_ingredients: string[] | null
   favorite_cuisines: string[] | null
   created_at: string
   updated_at: string
+}
+
+// Helper function to calculate age from birthday
+function calculateAge(birthday: string | null): number | null {
+  if (!birthday) return null
+  const today = new Date()
+  const birthDate = new Date(birthday)
+  let age = today.getFullYear() - birthDate.getFullYear()
+  const monthDiff = today.getMonth() - birthDate.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--
+  }
+  return age
 }
 
 function FamilyMembersSection() {
@@ -63,7 +76,7 @@ function FamilyMembersSection() {
   // Form state
   const [formData, setFormData] = useState({
     name: '',
-    age: '',
+    birthday: '',
     photo_url: '',
     dietary_restrictions: [] as string[],
     favorite_ingredients: [] as string[],
@@ -113,7 +126,7 @@ function FamilyMembersSection() {
   const resetForm = () => {
     setFormData({
       name: '',
-      age: '',
+      birthday: '',
       photo_url: '',
       dietary_restrictions: [],
       favorite_ingredients: [],
@@ -131,7 +144,7 @@ function FamilyMembersSection() {
     setEditingMember(member)
     setFormData({
       name: member.name,
-      age: member.age?.toString() || '',
+      birthday: member.birthday || '',
       photo_url: member.photo_url || '',
       dietary_restrictions: member.dietary_restrictions || [],
       favorite_ingredients: member.favorite_ingredients || [],
@@ -186,7 +199,7 @@ function FamilyMembersSection() {
     const memberData = {
       family_id: family.id,
       name: formData.name,
-      age: formData.age ? parseInt(formData.age) : null,
+      birthday: formData.birthday || null,
       photo_url: formData.photo_url || null,
       dietary_restrictions: formData.dietary_restrictions.length > 0 ? formData.dietary_restrictions : null,
       favorite_ingredients: formData.favorite_ingredients.length > 0 ? formData.favorite_ingredients : null,
@@ -354,8 +367,8 @@ function FamilyMembersSection() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-gray-900 truncate">{member.name}</h3>
-                      {member.age && (
-                        <p className="text-xs text-gray-600">{member.age} years old</p>
+                      {member.birthday && (
+                        <p className="text-xs text-gray-600">{calculateAge(member.birthday)} years old</p>
                       )}
                     </div>
                   </div>
@@ -487,18 +500,21 @@ function FamilyMembersSection() {
                 />
               </div>
 
-              {/* Age */}
+              {/* Birthday */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Birthday</label>
                 <input
-                  type="number"
-                  value={formData.age}
-                  onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                  type="date"
+                  value={formData.birthday}
+                  onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-400"
-                  placeholder="Enter age"
-                  min="0"
-                  max="150"
+                  max={new Date().toISOString().split('T')[0]}
                 />
+                {formData.birthday && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Age: {calculateAge(formData.birthday)} years old
+                  </p>
+                )}
               </div>
 
               {/* Dietary Restrictions */}
