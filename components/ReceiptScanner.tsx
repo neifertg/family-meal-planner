@@ -600,10 +600,12 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                     {editableItems.map((item, index) => {
                       if (!item.line_number) return null
 
-                      // Use position_percent if available (from Claude), otherwise fallback to line_number calculation
+                      // Use position_percent if available (from Claude), otherwise use smart fallback
+                      // Smart fallback: distribute items evenly in middle 80% of receipt (10%-90%)
+                      // This is more accurate than the old formula which assumed 2% per line
                       const topPercent = item.position_percent !== undefined
                         ? item.position_percent + '%'
-                        : (item.line_number * 2) + '%'
+                        : `${10 + (index / Math.max(editableItems.length - 1, 1)) * 80}%`
                       const isHovered = hoveredItemIndex === index
 
                       // Only render if this item is currently hovered
