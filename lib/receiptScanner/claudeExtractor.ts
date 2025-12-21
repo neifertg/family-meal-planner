@@ -49,7 +49,7 @@ IMPORTANT INSTRUCTIONS:
 6. Handle multi-line item descriptions correctly
 7. For source_text: Include the EXACT text as it appears on the receipt (e.g., "CHK BRE 2LB" not "Chicken Breast")
 8. For line_number: Count from top of receipt, starting at 1
-9. For position_percent: Estimate where vertically on the receipt this item appears (0 = very top, 100 = very bottom)
+9. For position_percent: CRITICAL - Carefully measure the vertical position of each item on the receipt. Look at where the item's text appears from top to bottom. 0 = absolute top of receipt, 50 = middle, 100 = absolute bottom. Be as precise as possible - this is used for visual alignment.
 10. For category and is_food: Use context from the store type and surrounding items to categorize accurately
 11. Return ONLY valid JSON - no markdown, no explanations
 
