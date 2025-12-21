@@ -49,7 +49,7 @@ IMPORTANT INSTRUCTIONS:
 6. Handle multi-line item descriptions correctly
 7. For source_text: Include the EXACT text as it appears on the receipt (e.g., "CHK BRE 2LB" not "Chicken Breast")
 8. For line_number: Count from top of receipt, starting at 1
-9. For position_percent: CRITICAL - Carefully measure the vertical position of each item on the receipt. Look at where the item's text appears from top to bottom. 0 = absolute top of receipt, 50 = middle, 100 = absolute bottom. Be as precise as possible - this is used for visual alignment.
+9. For position_percent: ABSOLUTELY CRITICAL FOR VISUAL ALIGNMENT - Measure the vertical position where the ITEM LINE BEGINS on the receipt image. Start measuring from the very FIRST LINE OF ITEMS (skip store header/logo), not from the top of the image. The first actual grocery item should be around 0-5%, items in the middle of the list around 40-60%, and the last item before the total should be around 90-95%. DO NOT include the store header, logo, or receipt footer in your measurements - only measure within the item list section. Be extremely precise - users will hover over items and see a visual indicator at this exact position.
 10. For category and is_food: Use context from the store type and surrounding items to categorize accurately
 11. Return ONLY valid JSON - no markdown, no explanations
 

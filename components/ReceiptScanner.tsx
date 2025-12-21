@@ -601,11 +601,17 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                       if (!item.line_number) return null
 
                       // Use position_percent if available (from Claude), otherwise use smart fallback
-                      // Smart fallback: distribute items evenly in middle 80% of receipt (10%-90%)
-                      // This is more accurate than the old formula which assumed 2% per line
-                      const topPercent = item.position_percent !== undefined
-                        ? item.position_percent + '%'
-                        : `${10 + (index / Math.max(editableItems.length - 1, 1)) * 80}%`
+                      // Claude now measures within the item list section (0% = first item, 100% = last item)
+                      // We need to map this to the full receipt image which includes header/footer
+                      const rawPercent = item.position_percent !== undefined
+                        ? item.position_percent
+                        : 10 + (index / Math.max(editableItems.length - 1, 1)) * 80
+
+                      // Map Claude's measurements (which skip header) to full receipt image
+                      // Assume header takes ~15% of image, items take ~70%, footer takes ~15%
+                      // So Claude's 0% → 15%, Claude's 50% → 50%, Claude's 100% → 85%
+                      const mappedPercent = 15 + (rawPercent * 0.7)
+                      const topPercent = `${mappedPercent}%`
                       const isHovered = hoveredItemIndex === index
 
                       // Only render if this item is currently hovered
