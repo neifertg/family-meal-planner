@@ -193,6 +193,17 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
         ok: response.ok
       })
 
+      // Check if response is OK before parsing JSON
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[ReceiptScanner] API error response', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText.substring(0, 500)
+        })
+        throw new Error(`API request failed (${response.status}): ${errorText.substring(0, 200)}`)
+      }
+
       const claudeResult = await response.json()
 
       console.log('[ReceiptScanner] API result parsed', {
