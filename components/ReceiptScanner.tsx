@@ -67,9 +67,9 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       reader.onload = (e) => {
         const img = new Image()
         img.onload = () => {
-          // Calculate new dimensions to keep image under reasonable size
-          // Target max dimension of 2000px (good balance for receipt text readability)
-          const maxDimension = 2000
+          // Calculate new dimensions to keep image under Vercel's 4.5MB payload limit
+          // Reduced from 2000px to 1200px - Claude Vision is robust enough for lower res
+          const maxDimension = 1200
           let width = img.width
           let height = img.height
 
@@ -96,8 +96,9 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
 
           ctx.drawImage(img, 0, 0, width, height)
 
-          // Convert to JPEG with 0.9 quality for good balance of size/quality
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.9)
+          // Convert to JPEG with 0.75 quality to stay under Vercel's 4.5MB limit
+          // Claude Vision is robust enough to handle lower quality receipt images
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75)
           resolve(compressedDataUrl)
         }
         img.onerror = () => reject(new Error('Failed to load image'))
