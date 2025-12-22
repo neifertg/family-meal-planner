@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import Image from 'next/image'
+import { FormErrorBanner, FieldError } from '@/components/FormError'
+import { validateRequired, validateBirthday, combineValidations, ValidationError, getFieldError } from '@/lib/validation'
 
 type Invitation = {
   id: string
@@ -71,6 +73,7 @@ function FamilyMembersSection() {
   const [showModal, setShowModal] = useState(false)
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
   const supabase = createClient()
 
   // Form state
@@ -133,6 +136,7 @@ function FamilyMembersSection() {
       favorite_cuisines: []
     })
     setEditingMember(null)
+    setValidationErrors([])
   }
 
   const openAddModal = () => {
@@ -185,6 +189,20 @@ function FamilyMembersSection() {
   }
 
   const handleSave = async () => {
+    // Clear previous validation errors
+    setValidationErrors([])
+
+    // Validate required fields
+    const validation = combineValidations(
+      validateRequired(formData.name, 'Name'),
+      formData.birthday ? validateBirthday(formData.birthday) : null
+    )
+
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors)
+      return
+    }
+
     const { data: family, error: familyError } = await supabase
       .from('families')
       .select('id')
@@ -192,7 +210,10 @@ function FamilyMembersSection() {
       .maybeSingle()
 
     if (familyError || !family?.id) {
-      alert('Error loading family')
+      setValidationErrors([{
+        field: 'family',
+        message: 'Failed to load family information. Please refresh the page and try again.'
+      }])
       return
     }
 
@@ -213,7 +234,10 @@ function FamilyMembersSection() {
         .eq('id', editingMember.id)
 
       if (error) {
-        alert(`Failed to update family member: ${error.message}`)
+        setValidationErrors([{
+          field: 'save',
+          message: `Failed to update family member: ${error.message}. Please try again or contact support if the issue persists.`
+        }])
       } else {
         setShowModal(false)
         resetForm()
@@ -225,7 +249,10 @@ function FamilyMembersSection() {
         .insert(memberData)
 
       if (error) {
-        alert(`Failed to add family member: ${error.message}`)
+        setValidationErrors([{
+          field: 'save',
+          message: `Failed to add family member: ${error.message}. Please try again or contact support if the issue persists.`
+        }])
       } else {
         setShowModal(false)
         resetForm()
@@ -454,6 +481,11 @@ function FamilyMembersSection() {
             </div>
 
             <div className="p-6 space-y-6">
+              {/* Validation Errors */}
+              {validationErrors.length > 0 && (
+                <FormErrorBanner error={validationErrors.map(e => e.message)} />
+              )}
+
               {/* Photo Upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Photo</label>
@@ -493,11 +525,22 @@ function FamilyMembersSection() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-400"
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value })
+                    // Clear validation errors when user starts editing
+                    if (validationErrors.some(e => e.field === 'Name')) {
+                      setValidationErrors(validationErrors.filter(e => e.field !== 'Name'))
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-400 ${
+                    validationErrors.some(e => e.field === 'Name')
+                      ? 'border-red-500'
+                      : 'border-gray-300'
+                  }`}
                   placeholder="Enter name"
                   required
                 />
+                <FieldError error={getFieldError(validationErrors, 'Name')} />
               </div>
 
               {/* Birthday */}
@@ -506,8 +549,18 @@ function FamilyMembersSection() {
                 <input
                   type="date"
                   value={formData.birthday}
-                  onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-400"
+                  onChange={(e) => {
+                    setFormData({ ...formData, birthday: e.target.value })
+                    // Clear validation errors when user starts editing
+                    if (validationErrors.some(e => e.field === 'Birthday')) {
+                      setValidationErrors(validationErrors.filter(e => e.field !== 'Birthday'))
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 placeholder:text-gray-400 ${
+                    validationErrors.some(e => e.field === 'Birthday')
+                      ? 'border-red-500'
+                      : 'border-gray-300'
+                  }`}
                   max={new Date().toISOString().split('T')[0]}
                 />
                 {formData.birthday && (
@@ -515,6 +568,7 @@ function FamilyMembersSection() {
                     Age: {calculateAge(formData.birthday)} years old
                   </p>
                 )}
+                <FieldError error={getFieldError(validationErrors, 'Birthday')} />
               </div>
 
               {/* Dietary Restrictions */}
