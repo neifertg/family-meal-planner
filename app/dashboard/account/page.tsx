@@ -562,7 +562,12 @@ function FamilyMembersSection() {
                       : 'border-gray-300'
                   }`}
                   max={new Date().toISOString().split('T')[0]}
+                  min="1900-01-01"
+                  placeholder="mm/dd/yyyy"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 You can type the date directly (e.g., 01/15/1990) or use the calendar picker
+                </p>
                 {formData.birthday && (
                   <p className="text-sm text-gray-600 mt-1">
                     Age: {calculateAge(formData.birthday)} years old
