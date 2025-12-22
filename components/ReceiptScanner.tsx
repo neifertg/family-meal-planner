@@ -6,6 +6,8 @@ import { saveReceiptCorrections } from '@/lib/receiptScanner/learningSystem'
 import { createClient } from '@/lib/supabase/client'
 import { estimateExpirationDate } from '@/lib/receiptScanner/expirationEstimator'
 import ImageEnhancer from '@/components/ImageEnhancer'
+import { FormErrorBanner, FieldError } from '@/components/FormError'
+import { validateRequired, validatePurchaseDate, validateArrayLength, combineValidations, ValidationError } from '@/lib/validation'
 
 type ReceiptScannerProps = {
   onReceiptProcessed: (receipt: ExtractedReceipt, applyToBudget: boolean) => void
@@ -31,6 +33,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const [familyIdLoading, setFamilyIdLoading] = useState(true)
   const [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null)
   const [applyToBudget, setApplyToBudget] = useState(true) // Default to true - most users want to track receipts in budget
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
 
   const supabase = createClient()
 
@@ -202,7 +205,24 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
           statusText: response.statusText,
           errorText: errorText.substring(0, 500)
         })
-        throw new Error(`API request failed (${response.status}): ${errorText.substring(0, 200)}`)
+
+        // Provide user-friendly error messages based on status code
+        let errorMessage = 'Failed to scan receipt. '
+        if (response.status === 400) {
+          errorMessage += 'The image data or request was invalid. Please try a different image.'
+        } else if (response.status === 413) {
+          errorMessage += 'The image file is too large. Please try a smaller image or crop the receipt.'
+        } else if (response.status === 429) {
+          errorMessage += 'Too many requests. Please wait a moment and try again.'
+        } else if (response.status === 500) {
+          errorMessage += 'Server error occurred. Please try again later or contact support if the issue persists.'
+        } else if (response.status === 503) {
+          errorMessage += 'Service temporarily unavailable. Please try again in a moment.'
+        } else {
+          errorMessage += `Error ${response.status}: ${response.statusText}`
+        }
+
+        throw new Error(errorMessage)
       }
 
       const claudeResult = await response.json()
@@ -237,7 +257,10 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
           error: claudeResult.error,
           fullResult: claudeResult
         })
-        setError(claudeResult.error || 'Failed to extract receipt from image')
+        const userFriendlyError = claudeResult.error
+          ? `Receipt scanning failed: ${claudeResult.error}. Please ensure the image is clear and shows a complete receipt.`
+          : 'Failed to extract receipt data from the image. Please ensure the receipt is clearly visible and try again.'
+        setError(userFriendlyError)
       }
 
       setProgress(100)
@@ -267,13 +290,33 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
   const handleApproveAll = async () => {
     console.log('Approve button clicked', { extractedReceipt, familyId, editableItems })
 
+    // Clear previous validation errors
+    setValidationErrors([])
+
     if (!extractedReceipt) {
       console.error('No extracted receipt')
       return
     }
 
     if (!familyId) {
-      alert('You must be part of a family to save receipts. Please create or join a family first.')
+      setValidationErrors([{
+        field: 'family',
+        message: 'You must be part of a family to save receipts. Please create or join a family first from your profile settings.'
+      }])
+      return
+    }
+
+    // Validate required fields
+    const validation = combineValidations(
+      validateRequired(editablePurchaseDate, 'Purchase date'),
+      validatePurchaseDate(editablePurchaseDate),
+      validateArrayLength(editableItems, 'Receipt items', 1)
+    )
+
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors)
+      // Scroll to top to show error banner
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
 
@@ -482,10 +525,12 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
 
       {/* Error Message */}
       {error && (
-        <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-lg">
-          <p className="font-medium">Error</p>
-          <p className="text-sm">{error}</p>
-        </div>
+        <FormErrorBanner error={error} />
+      )}
+
+      {/* Validation Errors */}
+      {validationErrors.length > 0 && (
+        <FormErrorBanner error={validationErrors.map(e => e.message)} />
       )}
 
       {/* Review Step */}
@@ -529,10 +574,22 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                     type="date"
                     id="purchase_date"
                     value={editablePurchaseDate}
-                    onChange={(e) => setEditablePurchaseDate(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    onChange={(e) => {
+                      setEditablePurchaseDate(e.target.value)
+                      // Clear validation errors when user starts editing
+                      if (validationErrors.some(e => e.field === 'Purchase date')) {
+                        setValidationErrors(validationErrors.filter(e => e.field !== 'Purchase date'))
+                      }
+                    }}
+                    max={new Date().toISOString().split('T')[0]}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${
+                      validationErrors.some(e => e.field === 'Purchase date')
+                        ? 'border-red-500'
+                        : 'border-blue-300'
+                    }`}
                     required
                   />
+                  <FieldError error={validationErrors.find(e => e.field === 'Purchase date')?.message} />
                 </div>
               </div>
 
