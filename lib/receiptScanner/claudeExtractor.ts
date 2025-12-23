@@ -142,11 +142,108 @@ function formatLearningExamples(examples: any[]): string {
 }
 
 /**
- * Extract receipt from image using Claude Vision
+ * Verify extraction completeness with a second pass
+ */
+async function verifyExtraction(
+  client: Anthropic,
+  imageData: string,
+  mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+  initialExtraction: ExtractedReceipt
+): Promise<{ missed_items: ReceiptItem[], total_items_visible: number, inputTokens?: number, outputTokens?: number }> {
+  try {
+    const itemList = initialExtraction.items?.map(i => `"${i.name}"`).join(', ') || 'none'
+
+    const verificationPrompt = `You previously extracted ${initialExtraction.items?.length || 0} items from this receipt.
+
+VERIFICATION TASK:
+1. Count the TOTAL number of visible line items on this receipt (look carefully at every line)
+2. Compare that count to the ${initialExtraction.items?.length || 0} items you extracted
+3. If you missed any items, identify them with:
+   - name (string): Item name
+   - price (number): Item price
+   - line_number (number): Which line it's on
+   - source_text (string): Exact text from receipt
+
+Items you already extracted: ${itemList}
+
+Return ONLY valid JSON with this structure:
+{
+  "total_items_visible": <number of line items you can see>,
+  "missed_items": [
+    {
+      "name": "Item Name",
+      "price": 0.00,
+      "line_number": 0,
+      "source_text": "exact text from receipt",
+      "category": "pantry",
+      "is_food": true
+    }
+  ]
+}
+
+If you didn't miss any items, return: {"total_items_visible": ${initialExtraction.items?.length || 0}, "missed_items": []}`
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2048,
+      temperature: 0.1,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+                data: imageData,
+              },
+            },
+            {
+              type: 'text',
+              text: verificationPrompt
+            }
+          ],
+        }
+      ]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) ||
+                     responseText.match(/```\s*([\s\S]*?)\s*```/)
+    const jsonText = jsonMatch ? jsonMatch[1] : responseText
+    const verification = JSON.parse(jsonText)
+
+    console.log('[claudeExtractor] Verification complete', {
+      totalVisible: verification.total_items_visible,
+      missedCount: verification.missed_items?.length || 0,
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens
+    })
+
+    return {
+      ...verification,
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens
+    }
+  } catch (error: any) {
+    console.error('[claudeExtractor] Verification failed:', error)
+    // If verification fails, return empty result (don't block the main flow)
+    return {
+      missed_items: [],
+      total_items_visible: initialExtraction.items?.length || 0,
+      inputTokens: 0,
+      outputTokens: 0
+    }
+  }
+}
+
+/**
+ * Extract receipt from image using Claude Vision with two-pass verification
  */
 export async function extractReceiptFromImage(
   imageData: string,
-  mimeType: string = 'image/jpeg',
+  mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' = 'image/jpeg',
   learningExamples: any[] = []
 ): Promise<ReceiptExtractionResult> {
   try {
@@ -239,13 +336,55 @@ export async function extractReceiptFromImage(
       }))
     }
 
+    // PASS 2: Verification step to catch missed items
+    console.log('[claudeExtractor] Starting verification pass...')
+    const verification = await verifyExtraction(client, imageData, mimeType, receipt)
+
+    // Track token usage from both passes
+    let totalInputTokens = message.usage.input_tokens + (verification.inputTokens || 0)
+    let totalOutputTokens = message.usage.output_tokens + (verification.outputTokens || 0)
+
+    // Add missed items to the receipt
+    if (verification.missed_items && verification.missed_items.length > 0) {
+      console.log('[claudeExtractor] Found missed items:', {
+        missedCount: verification.missed_items.length,
+        missedItems: verification.missed_items.map(i => i.name)
+      })
+
+      // Add missed items to receipt
+      const missedItemsProcessed = verification.missed_items.map(item => ({
+        ...item,
+        category: item.category || fallbackCategorizeItem(item.name),
+        is_food: item.is_food !== undefined ? item.is_food : true,
+        // Mark as recovered in verification
+        source_text: item.source_text || `${item.name} (recovered in verification)`
+      }))
+
+      receipt.items = [...(receipt.items || []), ...missedItemsProcessed]
+
+      // Add quality warning about missed items
+      if (!receipt.quality_warnings) {
+        receipt.quality_warnings = []
+      }
+      receipt.quality_warnings.push(
+        `Verification found ${verification.missed_items.length} additional item${verification.missed_items.length > 1 ? 's' : ''} that were initially missed`
+      )
+    } else {
+      console.log('[claudeExtractor] Verification confirmed all items captured')
+    }
+
     const confidence = calculateConfidence(receipt)
-    const inputTokens = message.usage.input_tokens
-    const outputTokens = message.usage.output_tokens
-    const totalTokens = inputTokens + outputTokens
+    const totalTokens = totalInputTokens + totalOutputTokens
 
     // Estimate cost (Claude Sonnet 4 pricing: ~$3/million input tokens, ~$15/million output tokens)
-    const costUsd = (inputTokens * 3 / 1_000_000) + (outputTokens * 15 / 1_000_000)
+    const costUsd = (totalInputTokens * 3 / 1_000_000) + (totalOutputTokens * 15 / 1_000_000)
+
+    console.log('[claudeExtractor] Extraction complete', {
+      finalItemCount: receipt.items?.length,
+      missedItemsRecovered: verification.missed_items?.length || 0,
+      totalTokens,
+      costUsd: costUsd.toFixed(4)
+    })
 
     return {
       success: true,
