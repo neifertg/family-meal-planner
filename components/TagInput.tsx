@@ -25,6 +25,55 @@ export default function TagInput({
 }: TagInputProps) {
   const [inputValue, setInputValue] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [similarTagWarning, setSimilarTagWarning] = useState<string | null>(null)
+
+  // Calculate similarity between two strings (Levenshtein distance)
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const len1 = str1.length
+    const len2 = str2.length
+    const matrix: number[][] = []
+
+    for (let i = 0; i <= len1; i++) {
+      matrix[i] = [i]
+    }
+    for (let j = 0; j <= len2; j++) {
+      matrix[0][j] = j
+    }
+
+    for (let i = 1; i <= len1; i++) {
+      for (let j = 1; j <= len2; j++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        )
+      }
+    }
+
+    return matrix[len1][len2]
+  }
+
+  // Find similar existing tags
+  const findSimilarTag = (newTag: string): string | null => {
+    const normalized = newTag.trim().toLowerCase()
+    const allExistingTags = [...suggestions, ...tags]
+
+    for (const existingTag of allExistingTags) {
+      const existing = existingTag.toLowerCase()
+      if (existing === normalized) continue
+
+      const distance = calculateSimilarity(normalized, existing)
+      const maxLength = Math.max(normalized.length, existing.length)
+      const similarity = 1 - distance / maxLength
+
+      // If 70% similar or more, warn the user
+      if (similarity >= 0.7) {
+        return existingTag
+      }
+    }
+    return null
+  }
 
   // Filter suggestions based on input and exclude already-selected tags
   const filteredSuggestions = suggestions.filter(
@@ -36,6 +85,15 @@ export default function TagInput({
   const addTag = (tag: string) => {
     const normalizedTag = tag.trim().toLowerCase()
     if (normalizedTag && !tags.includes(normalizedTag)) {
+      // Check for similar tags
+      const similarTag = findSimilarTag(normalizedTag)
+      if (similarTag) {
+        setSimilarTagWarning(`Similar tag exists: "${similarTag}". Did you mean that instead?`)
+        // Still add the tag, but show warning
+      } else {
+        setSimilarTagWarning(null)
+      }
+
       onChange([...tags, normalizedTag])
       setInputValue('')
       setShowSuggestions(false)
@@ -44,6 +102,10 @@ export default function TagInput({
 
   const removeTag = (tagToRemove: string) => {
     onChange(tags.filter((tag) => tag !== tagToRemove))
+    // Clear warning if user removes the tag that triggered it
+    if (similarTagWarning && tags[tags.length - 1] === tagToRemove) {
+      setSimilarTagWarning(null)
+    }
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -127,6 +189,15 @@ export default function TagInput({
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {similarTagWarning && (
+        <div className="flex items-start gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+          <svg className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          <p className="text-xs text-yellow-800">{similarTagWarning}</p>
+        </div>
+      )}
 
       <p className="text-xs text-gray-500">
         Type a tag and press Enter to add it. Click × to remove tags.
