@@ -213,7 +213,11 @@ export default function RecipesPage() {
   const allTags = useMemo(() => {
     const tagSet = new Set<string>()
     recipes.forEach(recipe => {
+      // Add explicit tags
       recipe.tags?.forEach(tag => tagSet.add(tag))
+      // Also include cuisine and category as tags
+      if (recipe.cuisine) tagSet.add(recipe.cuisine.toLowerCase())
+      if (recipe.category) tagSet.add(recipe.category.toLowerCase())
     })
     const tags = Array.from(tagSet).sort()
     console.log('All tags found across recipes:', tags.length, tags)
@@ -230,9 +234,13 @@ export default function RecipesPage() {
       const matchesCuisine = selectedCuisine === '' || recipe.cuisine === selectedCuisine
       const matchesCategory = selectedCategory === '' || recipe.category === selectedCategory
 
-      // Match if recipe has ALL selected tags
+      // Match if recipe has ALL selected tags (check tags, cuisine, and category)
       const matchesTags = selectedTags.length === 0 ||
-        selectedTags.every(tag => recipe.tags?.includes(tag))
+        selectedTags.every(tag => {
+          return recipe.tags?.includes(tag) ||
+                 recipe.cuisine?.toLowerCase() === tag ||
+                 recipe.category?.toLowerCase() === tag
+        })
 
       return matchesSearch && matchesCuisine && matchesCategory && matchesTags
     })
