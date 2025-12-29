@@ -403,6 +403,18 @@ export async function extractReceiptFromImage(
     // Estimate cost (Claude Sonnet 4 pricing: ~$3/million input tokens, ~$15/million output tokens)
     const costUsd = (totalInputTokens * 3 / 1_000_000) + (totalOutputTokens * 15 / 1_000_000)
 
+    // Generate and log analytics
+    const { generateReceiptAnalytics, logAnalytics } = await import('@/lib/utils/receipt-analytics')
+    const analytics = generateReceiptAnalytics(receipt, {
+      initial_item_count: (receipt.items?.length || 0) - (verification.missed_items?.length || 0),
+      verification_found_count: verification.missed_items?.length || 0,
+      gap_count: gaps.length,
+      high_confidence_gap_count: gaps.filter(g => g.confidence === 'high').length,
+      tokens_used: totalTokens,
+      cost_usd: costUsd
+    })
+    logAnalytics(analytics)
+
     console.log('[claudeExtractor] Extraction complete', {
       finalItemCount: receipt.items?.length,
       missedItemsRecovered: verification.missed_items?.length || 0,
