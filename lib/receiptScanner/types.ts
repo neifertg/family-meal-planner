@@ -19,8 +19,11 @@ export type ReceiptItem = {
   category?: string        // Categorized by Claude: produce, dairy, meat, pantry, frozen, non_food
   is_food?: boolean        // true for food items, false for bags/gift wrap/non-grocery
   source_text?: string     // Raw text from receipt that this item came from
-  line_number?: number     // Approximate line number on receipt (for visual alignment)
-  position_percent?: number // Vertical position as percentage (0-100) from top of receipt
+  line_number?: number     // Sequential line number (1, 2, 3...) in top-to-bottom order
+  position_percent?: number // Vertical position as percentage (0-100) - calibrated using anchors
+  is_first_item?: boolean  // Anchor: true only for the first item on receipt
+  is_last_item?: boolean   // Anchor: true only for the last item on receipt
+  is_anchor_mid?: boolean  // Anchor: true for 2-3 middle items used for position calibration
   bounding_box?: BoundingBox // Coordinates for highlighting on receipt image
   cropped_image?: string   // Base64 data URL of cropped receipt segment showing this item
   consolidated_count?: number // Number of duplicate items that were merged into this one

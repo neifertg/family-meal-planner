@@ -21,8 +21,11 @@ Extract the following information:
   - category (string): REQUIRED - One of: "produce", "dairy", "meat", "pantry", "frozen", or "non_food"
   - is_food (boolean): REQUIRED - true if this is a food/grocery item, false for non-food items (bags, gift wrap, household items, etc.)
   - source_text (string): EXACT text from the receipt for this item (including any codes/abbreviations)
-  - line_number (number): Approximate line number where this item appears on the receipt
-  - position_percent (number): Vertical position of this item as a percentage (0-100) from top of receipt to bottom
+  - line_number (number): REQUIRED - Sequential number starting at 1 for the FIRST item, incrementing by 1 for each subsequent item in top-to-bottom order
+  - position_percent (number): Your best estimate of vertical position (0-100%) where this item appears on the receipt
+  - is_first_item (boolean): Set to true ONLY for the very first item on the receipt (for position calibration)
+  - is_last_item (boolean): Set to true ONLY for the very last item on the receipt (for position calibration)
+  - is_anchor_mid (boolean): Set to true for 2-3 items in the middle sections (around 33%, 66% positions) - choose items that are clearly visible and distinctive
   - consolidated_count (number): If this item was created by merging duplicates, how many separate entries were combined (e.g., 2 or 3)
   - consolidated_details (string): If consolidated, brief explanation (e.g., "Combined 2 separate banana purchases" or "Merged 3 chicken breast entries")
 - subtotal (number): Subtotal before tax
@@ -48,10 +51,11 @@ IMPORTANT INSTRUCTIONS:
 5. INCLUDE non-food items (bags, gift wrap, etc.) but mark them with is_food: false and category: "non_food"
 6. Handle multi-line item descriptions correctly
 7. For source_text: Include the EXACT text as it appears on the receipt (e.g., "CHK BRE 2LB" not "Chicken Breast")
-8. For line_number: Count from top of receipt, starting at 1
-9. For position_percent: ABSOLUTELY CRITICAL FOR VISUAL ALIGNMENT - Measure the vertical position where the ITEM LINE BEGINS on the receipt image. Start measuring from the very FIRST LINE OF ITEMS (skip store header/logo), not from the top of the image. The first actual grocery item should be around 0-5%, items in the middle of the list around 40-60%, and the last item before the total should be around 90-95%. DO NOT include the store header, logo, or receipt footer in your measurements - only measure within the item list section. Be extremely precise - users will hover over items and see a visual indicator at this exact position.
-10. For category and is_food: Use context from the store type and surrounding items to categorize accurately
-11. Return ONLY valid JSON - no markdown, no explanations
+8. For line_number: CRITICAL - Must be perfectly sequential starting at 1, incrementing by 1 with NO GAPS or SKIPS. This is the primary positioning mechanism.
+9. For anchor items (is_first_item, is_last_item, is_anchor_mid): Mark the first and last items, plus 2-3 distinctive middle items for position calibration. Middle anchors should be clearly visible and spread across the receipt (around 33%, 66% positions).
+10. For position_percent: Estimate the vertical position (0-100%) where each item appears. First item around 0-5%, middle around 40-60%, last around 90-95%. This will be calibrated using your anchor items and line numbers.
+11. For category and is_food: Use context from the store type and surrounding items to categorize accurately
+12. Return ONLY valid JSON - no markdown, no explanations
 
 SMART QUANTITY EXTRACTION:
 - Detect bulk purchases: "2 @ $3.99" means 2 items at $3.99 EACH (quantity: "2", price: 7.98, unit_price: 3.99)
@@ -142,46 +146,52 @@ function formatLearningExamples(examples: any[]): string {
 }
 
 /**
- * Verify extraction completeness with a second pass
+ * Verify extraction completeness with a second pass using gap analysis
  */
 async function verifyExtraction(
   client: Anthropic,
   imageData: string,
   mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-  initialExtraction: ExtractedReceipt
+  initialExtraction: ExtractedReceipt,
+  gapAnalysis: string
 ): Promise<{ missed_items: ReceiptItem[], total_items_visible: number, inputTokens?: number, outputTokens?: number }> {
   try {
+    const itemCount = initialExtraction.items?.length || 0
     const itemList = initialExtraction.items?.map(i => `"${i.name}"`).join(', ') || 'none'
 
-    const verificationPrompt = `You previously extracted ${initialExtraction.items?.length || 0} items from this receipt.
-
-VERIFICATION TASK:
-1. Count the TOTAL number of visible line items on this receipt (look carefully at every line)
-2. Compare that count to the ${initialExtraction.items?.length || 0} items you extracted
-3. If you missed any items, identify them with:
-   - name (string): Item name
-   - price (number): Item price
-   - line_number (number): Which line it's on
-   - source_text (string): Exact text from receipt
+    const verificationPrompt = `You previously extracted ${itemCount} items from this receipt.
 
 Items you already extracted: ${itemList}
 
+GAP ANALYSIS - Potential Missing Items:
+${gapAnalysis}
+
+VERIFICATION TASK:
+For each HIGH and MEDIUM priority gap listed above:
+1. Look at the specified position on the receipt image
+2. Determine if there is actually a line item there that was missed
+3. If YES, extract it with full details (name, price, line_number, source_text, category, is_food)
+4. If NO (gap is intentional/section break), mark as not found
+
+Also do a final count: How many total line items are visible on this receipt?
+
 Return ONLY valid JSON with this structure:
 {
-  "total_items_visible": <number of line items you can see>,
+  "total_items_visible": <total count of all line items you can see>,
   "missed_items": [
     {
       "name": "Item Name",
       "price": 0.00,
-      "line_number": 0,
+      "line_number": <the missing line number from gap analysis>,
       "source_text": "exact text from receipt",
       "category": "pantry",
-      "is_food": true
+      "is_food": true,
+      "quantity": "1"
     }
   ]
 }
 
-If you didn't miss any items, return: {"total_items_visible": ${initialExtraction.items?.length || 0}, "missed_items": []}`
+If no items were actually missed, return: {"total_items_visible": ${itemCount}, "missed_items": []}`
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
@@ -336,31 +346,38 @@ export async function extractReceiptFromImage(
       }))
     }
 
-    // PASS 2: Verification step to catch missed items
-    console.log('[claudeExtractor] Starting verification pass...')
-    const verification = await verifyExtraction(client, imageData, mimeType, receipt)
+    // Import gap detection utilities
+    const { findLineNumberGaps, formatGapsForPrompt, insertMissedItems } = await import('@/lib/utils/gap-detection')
+
+    // Analyze gaps in line number sequence
+    const gaps = findLineNumberGaps(receipt.items || [])
+    const gapAnalysis = formatGapsForPrompt(gaps)
+
+    // PASS 2: Verification step to catch missed items using gap analysis
+    console.log('[claudeExtractor] Starting verification pass with gap analysis...')
+    const verification = await verifyExtraction(client, imageData, mimeType, receipt, gapAnalysis)
 
     // Track token usage from both passes
     let totalInputTokens = message.usage.input_tokens + (verification.inputTokens || 0)
     let totalOutputTokens = message.usage.output_tokens + (verification.outputTokens || 0)
 
-    // Add missed items to the receipt
+    // Add missed items to the receipt and renumber
     if (verification.missed_items && verification.missed_items.length > 0) {
       console.log('[claudeExtractor] Found missed items:', {
         missedCount: verification.missed_items.length,
         missedItems: verification.missed_items.map(i => i.name)
       })
 
-      // Add missed items to receipt
+      // Process missed items
       const missedItemsProcessed = verification.missed_items.map(item => ({
         ...item,
         category: item.category || fallbackCategorizeItem(item.name),
         is_food: item.is_food !== undefined ? item.is_food : true,
-        // Mark as recovered in verification
         source_text: item.source_text || `${item.name} (recovered in verification)`
       }))
 
-      receipt.items = [...(receipt.items || []), ...missedItemsProcessed]
+      // Insert missed items at correct positions and renumber
+      receipt.items = insertMissedItems(receipt.items || [], missedItemsProcessed)
 
       // Add quality warning about missed items
       if (!receipt.quality_warnings) {
@@ -372,6 +389,13 @@ export async function extractReceiptFromImage(
     } else {
       console.log('[claudeExtractor] Verification confirmed all items captured')
     }
+
+    // Import position calibration utility
+    const { calibratePositions } = await import('@/lib/utils/receipt-positioning')
+
+    // FINAL STEP: Calibrate all positions using anchors
+    console.log('[claudeExtractor] Calibrating positions using anchor items...')
+    receipt.items = calibratePositions(receipt.items || [])
 
     const confidence = calculateConfidence(receipt)
     const totalTokens = totalInputTokens + totalOutputTokens
