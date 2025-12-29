@@ -16,6 +16,7 @@ type Recipe = {
   servings: number | null
   cuisine: string | null
   category: string | null
+  tags: string[] | null
   estimated_cost_usd: number | null
   cost_per_serving_usd: number | null
   created_at: string
@@ -87,6 +88,7 @@ export default function RecipesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCuisine, setSelectedCuisine] = useState<string>('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<'recent' | 'rating' | 'name'>('recent')
   const [showAddToMenuModal, setShowAddToMenuModal] = useState(false)
@@ -203,6 +205,14 @@ export default function RecipesPage() {
     return unique.sort()
   }, [recipes])
 
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>()
+    recipes.forEach(recipe => {
+      recipe.tags?.forEach(tag => tagSet.add(tag))
+    })
+    return Array.from(tagSet).sort()
+  }, [recipes])
+
   // Filter and sort recipes
   const filteredRecipes = useMemo(() => {
     const filtered = recipes.filter(recipe => {
@@ -213,7 +223,11 @@ export default function RecipesPage() {
       const matchesCuisine = selectedCuisine === '' || recipe.cuisine === selectedCuisine
       const matchesCategory = selectedCategory === '' || recipe.category === selectedCategory
 
-      return matchesSearch && matchesCuisine && matchesCategory
+      // Match if recipe has ALL selected tags
+      const matchesTags = selectedTags.length === 0 ||
+        selectedTags.every(tag => recipe.tags?.includes(tag))
+
+      return matchesSearch && matchesCuisine && matchesCategory && matchesTags
     })
 
     // Sort recipes
@@ -235,15 +249,16 @@ export default function RecipesPage() {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       }
     })
-  }, [recipes, searchQuery, selectedCuisine, selectedCategory, sortBy])
+  }, [recipes, searchQuery, selectedCuisine, selectedCategory, selectedTags, sortBy])
 
   const clearFilters = () => {
     setSearchQuery('')
     setSelectedCuisine('')
     setSelectedCategory('')
+    setSelectedTags([])
   }
 
-  const hasActiveFilters = searchQuery || selectedCuisine || selectedCategory
+  const hasActiveFilters = searchQuery || selectedCuisine || selectedCategory || selectedTags.length > 0
 
   const handleAddToMenu = (recipe: Recipe, e: React.MouseEvent) => {
     e.preventDefault()
@@ -385,6 +400,44 @@ export default function RecipesPage() {
                 </div>
               )}
 
+              {/* Tag Filter */}
+              {allTags.length > 0 && (
+                <div className="md:w-64">
+                  <details className="relative group">
+                    <summary className="cursor-pointer list-none px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 bg-white flex items-center justify-between">
+                      <span>
+                        {selectedTags.length === 0 ? 'Filter by Tags' : `${selectedTags.length} tag${selectedTags.length > 1 ? 's' : ''} selected`}
+                      </span>
+                      <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </summary>
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                      {allTags.map(tag => (
+                        <label
+                          key={tag}
+                          className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedTags.includes(tag)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedTags([...selectedTags, tag])
+                              } else {
+                                setSelectedTags(selectedTags.filter(t => t !== tag))
+                              }
+                            }}
+                            className="w-4 h-4 text-rose-600 border-gray-300 rounded focus:ring-rose-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-900">{tag}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              )}
+
               {/* Sort By */}
               <div className="md:w-48">
                 <select
@@ -519,6 +572,19 @@ export default function RecipesPage() {
                     {recipe.category && (
                       <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
                         {recipe.category}
+                      </span>
+                    )}
+                    {recipe.tags && recipe.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {recipe.tags && recipe.tags.length > 3 && (
+                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                        +{recipe.tags.length - 3}
                       </span>
                     )}
                   </div>

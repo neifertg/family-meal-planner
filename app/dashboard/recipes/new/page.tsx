@@ -10,6 +10,7 @@ import { parseRecipeText } from '@/lib/parseRecipeText'
 import { ExtractedRecipe } from '@/lib/llmRecipeExtractor/types'
 import ErrorBanner from '@/components/ErrorBanner'
 import { InputField, TextAreaField } from '@/components/FormField'
+import TagInput, { COMMON_RECIPE_TAGS } from '@/components/TagInput'
 
 export default function NewRecipePage() {
   const router = useRouter()
@@ -27,6 +28,7 @@ export default function NewRecipePage() {
   const [servings, setServings] = useState('')
   const [cuisine, setCuisine] = useState('')
   const [category, setCategory] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const [imageUrl, setImageUrl] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imageUploadMode, setImageUploadMode] = useState<'url' | 'upload'>('url')
@@ -183,6 +185,7 @@ export default function NewRecipePage() {
         servings: servingCount,
         cuisine: (cuisine || '').trim() || null,
         category: (category || '').trim() || null,
+        tags: tags.length > 0 ? tags : null,
         image_url: uploadedImageUrl || null,
         owner: (owner || '').trim() || null,
         uploaded_by: (uploadedBy || '').trim() || null,
@@ -492,6 +495,20 @@ export default function NewRecipePage() {
                 <option value="Side Dish">Side Dish</option>
                 <option value="Beverage">Beverage</option>
               </select>
+            </div>
+
+            {/* Tags */}
+            <div>
+              <TagInput
+                tags={tags}
+                onChange={setTags}
+                suggestions={COMMON_RECIPE_TAGS}
+                label="Tags"
+                placeholder="Add tags like 'mexican', 'soup', 'dinner'..."
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Add tags to help categorize and search for this recipe (e.g., dinner, soup, mexican, quick, healthy)
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
