@@ -657,18 +657,14 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
                     {editableItems.map((item, index) => {
                       if (!item.line_number) return null
 
-                      // Use position_percent if available (from Claude), otherwise use smart fallback
-                      // Claude now measures within the item list section (0% = first item, 100% = last item)
-                      // We need to map this to the full receipt image which includes header/footer
-                      const rawPercent = item.position_percent !== undefined
+                      // Use calibrated position_percent directly from backend
+                      // Position is now calibrated using anchor items and line numbers
+                      // for accurate alignment across all receipt types
+                      const positionPercent = item.position_percent !== undefined
                         ? item.position_percent
                         : 10 + (index / Math.max(editableItems.length - 1, 1)) * 80
 
-                      // Map Claude's measurements (which skip header) to full receipt image
-                      // Assume header takes ~15% of image, items take ~70%, footer takes ~15%
-                      // So Claude's 0% → 15%, Claude's 50% → 50%, Claude's 100% → 85%
-                      const mappedPercent = 15 + (rawPercent * 0.7)
-                      const topPercent = `${mappedPercent}%`
+                      const topPercent = `${positionPercent}%`
                       const isHovered = hoveredItemIndex === index
 
                       // Only render if this item is currently hovered
