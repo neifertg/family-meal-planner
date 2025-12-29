@@ -428,26 +428,38 @@ export default function RecipesPage() {
                       </svg>
                     </summary>
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
-                      {allTags.map(tag => (
-                        <label
-                          key={tag}
-                          className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedTags.includes(tag)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedTags([...selectedTags, tag])
-                              } else {
-                                setSelectedTags(selectedTags.filter(t => t !== tag))
-                              }
-                            }}
-                            className="w-4 h-4 text-rose-600 border-gray-300 rounded focus:ring-rose-500"
-                          />
-                          <span className="ml-2 text-sm text-gray-900">{tag}</span>
-                        </label>
-                      ))}
+                      {selectedTags.length >= 5 && (
+                        <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 text-xs text-blue-700">
+                          Maximum 5 tags selected. Remove a tag to select different ones.
+                        </div>
+                      )}
+                      {allTags.map(tag => {
+                        const isSelected = selectedTags.includes(tag)
+                        const isDisabled = !isSelected && selectedTags.length >= 5
+                        return (
+                          <label
+                            key={tag}
+                            className={`flex items-center px-4 py-2 ${
+                              isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              disabled={isDisabled}
+                              onChange={(e) => {
+                                if (e.target.checked && selectedTags.length < 5) {
+                                  setSelectedTags([...selectedTags, tag])
+                                } else if (!e.target.checked) {
+                                  setSelectedTags(selectedTags.filter(t => t !== tag))
+                                }
+                              }}
+                              className="w-4 h-4 text-rose-600 border-gray-300 rounded focus:ring-rose-500 disabled:opacity-50"
+                            />
+                            <span className="ml-2 text-sm text-gray-900">{tag}</span>
+                          </label>
+                        )
+                      })}
                     </div>
                   </details>
                 </div>
@@ -580,22 +592,64 @@ export default function RecipesPage() {
                   {/* Tags */}
                   <div className="flex flex-wrap gap-2 mb-3">
                     {recipe.cuisine && (
-                      <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          const cuisineTag = recipe.cuisine!.toLowerCase()
+                          if (!selectedTags.includes(cuisineTag) && selectedTags.length < 5) {
+                            setSelectedTags([...selectedTags, cuisineTag])
+                          }
+                        }}
+                        disabled={selectedTags.includes(recipe.cuisine.toLowerCase()) || selectedTags.length >= 5}
+                        className={`px-2 py-1 rounded-full text-xs font-medium transition-all ${
+                          selectedTags.includes(recipe.cuisine.toLowerCase())
+                            ? 'bg-orange-500 text-white ring-2 ring-orange-300'
+                            : 'bg-orange-100 text-orange-700 hover:bg-orange-200 cursor-pointer'
+                        } ${selectedTags.length >= 5 && !selectedTags.includes(recipe.cuisine.toLowerCase()) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
                         {recipe.cuisine}
-                      </span>
+                      </button>
                     )}
                     {recipe.category && (
-                      <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          const categoryTag = recipe.category!.toLowerCase()
+                          if (!selectedTags.includes(categoryTag) && selectedTags.length < 5) {
+                            setSelectedTags([...selectedTags, categoryTag])
+                          }
+                        }}
+                        disabled={selectedTags.includes(recipe.category.toLowerCase()) || selectedTags.length >= 5}
+                        className={`px-2 py-1 rounded-full text-xs font-medium transition-all ${
+                          selectedTags.includes(recipe.category.toLowerCase())
+                            ? 'bg-purple-500 text-white ring-2 ring-purple-300'
+                            : 'bg-purple-100 text-purple-700 hover:bg-purple-200 cursor-pointer'
+                        } ${selectedTags.length >= 5 && !selectedTags.includes(recipe.category.toLowerCase()) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
                         {recipe.category}
-                      </span>
+                      </button>
                     )}
                     {recipe.tags && recipe.tags.slice(0, 3).map((tag) => (
-                      <span
+                      <button
                         key={tag}
-                        className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          if (!selectedTags.includes(tag) && selectedTags.length < 5) {
+                            setSelectedTags([...selectedTags, tag])
+                          }
+                        }}
+                        disabled={selectedTags.includes(tag) || selectedTags.length >= 5}
+                        className={`px-2 py-1 rounded-full text-xs font-medium transition-all ${
+                          selectedTags.includes(tag)
+                            ? 'bg-blue-500 text-white ring-2 ring-blue-300'
+                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
+                        } ${selectedTags.length >= 5 && !selectedTags.includes(tag) ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         {tag}
-                      </span>
+                      </button>
                     ))}
                     {recipe.tags && recipe.tags.length > 3 && (
                       <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
