@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import RecipeRating from '@/components/RecipeRating'
 import ShareRecipeModal from '@/components/ShareRecipeModal'
 import UmbrellaGroupRecipeRating from '@/components/UmbrellaGroupRecipeRating'
+import TagInput, { COMMON_RECIPE_TAGS } from '@/components/TagInput'
 
 type Recipe = {
   id: string
@@ -22,6 +23,7 @@ type Recipe = {
   image_url: string | null
   cuisine: string | null
   category: string | null
+  tags: string[] | null
   owner?: string | null
   uploaded_by?: string | null
   created_at: string
@@ -45,6 +47,7 @@ export default function RecipeDetailPage() {
   const [editServings, setEditServings] = useState('')
   const [editCuisine, setEditCuisine] = useState('')
   const [editCategory, setEditCategory] = useState('')
+  const [editTags, setEditTags] = useState<string[]>([])
   const [editImageUrl, setEditImageUrl] = useState('')
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [editImageUploadMode, setEditImageUploadMode] = useState<'url' | 'upload'>('url')
@@ -108,6 +111,7 @@ export default function RecipeDetailPage() {
     setEditServings(recipe.servings?.toString() || '')
     setEditCuisine(recipe.cuisine || '')
     setEditCategory(recipe.category || '')
+    setEditTags(recipe.tags || [])
     setEditImageUrl(recipe.image_url || '')
     setEditOwner(recipe.owner || '')
     setEditUploadedBy(recipe.uploaded_by || '')
@@ -176,6 +180,7 @@ export default function RecipeDetailPage() {
         servings: editServings ? parseInt(editServings) : null,
         cuisine: editCuisine.trim() || null,
         category: editCategory.trim() || null,
+        tags: editTags.length > 0 ? editTags : null,
         image_url: uploadedImageUrl || null,
         owner: (editOwner || '').trim() || null,
         uploaded_by: (editUploadedBy || '').trim() || null,
@@ -424,6 +429,20 @@ export default function RecipeDetailPage() {
                 </select>
               </div>
 
+              {/* Tags */}
+              <div>
+                <TagInput
+                  tags={editTags}
+                  onChange={setEditTags}
+                  suggestions={COMMON_RECIPE_TAGS}
+                  label="Tags"
+                  placeholder="Add tags like 'mexican', 'soup', 'dinner'..."
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Add tags to help categorize and search for this recipe (e.g., dinner, soup, mexican, quick, healthy)
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="editOwner" className="block text-sm font-medium text-gray-700 mb-1">
@@ -532,6 +551,14 @@ export default function RecipeDetailPage() {
                       {recipe.category}
                     </span>
                   )}
+                  {recipe.tags && recipe.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </div>
 
                 {/* Time Info */}
