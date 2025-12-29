@@ -83,21 +83,39 @@ export default function TagInput({
   )
 
   const addTag = (tag: string) => {
-    const normalizedTag = tag.trim().toLowerCase()
-    if (normalizedTag && !tags.includes(normalizedTag)) {
-      // Check for similar tags
-      const similarTag = findSimilarTag(normalizedTag)
+    // Import normalization utilities
+    const { cleanTag, suggestCleanTags } = require('@/lib/utils/tag-normalization')
+
+    const { cleaned, wasChanged } = cleanTag(tag)
+
+    // Don't add if already exists
+    if (tags.includes(cleaned)) {
+      setSimilarTagWarning(`Tag "${cleaned}" already added`)
+      setInputValue('')
+      return
+    }
+
+    // If tag was cleaned/changed, suggest the clean version
+    if (wasChanged) {
+      const suggestions = suggestCleanTags(tag, [...tags, ...suggestions])
+      if (suggestions.length > 0) {
+        setSimilarTagWarning(
+          `Suggestion: Use "${suggestions[0]}" instead of "${tag}"? (Click the suggestion below or press Enter to use "${cleaned}")`
+        )
+      }
+    } else {
+      // Check for similar existing tags
+      const similarTag = findSimilarTag(cleaned)
       if (similarTag) {
         setSimilarTagWarning(`Similar tag exists: "${similarTag}". Did you mean that instead?`)
-        // Still add the tag, but show warning
       } else {
         setSimilarTagWarning(null)
       }
-
-      onChange([...tags, normalizedTag])
-      setInputValue('')
-      setShowSuggestions(false)
     }
+
+    onChange([...tags, cleaned])
+    setInputValue('')
+    setShowSuggestions(false)
   }
 
   const removeTag = (tagToRemove: string) => {
