@@ -173,6 +173,11 @@ export default function RecipesPage() {
           : undefined
         const rating_count = ratings.length
 
+        // Debug: Log tags for first recipe
+        if (recipesData.indexOf(recipe) === 0) {
+          console.log('First recipe tags:', recipe.tags, 'Recipe name:', recipe.name)
+        }
+
         return {
           ...recipe,
           average_rating,
@@ -210,7 +215,9 @@ export default function RecipesPage() {
     recipes.forEach(recipe => {
       recipe.tags?.forEach(tag => tagSet.add(tag))
     })
-    return Array.from(tagSet).sort()
+    const tags = Array.from(tagSet).sort()
+    console.log('All tags found across recipes:', tags.length, tags)
+    return tags
   }, [recipes])
 
   // Filter and sort recipes
