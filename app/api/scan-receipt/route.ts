@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { extractReceiptFromImage } from '@/lib/receiptScanner/claudeExtractor'
+import { extractReceiptFromImage, extractReceiptWithChunking, extractReceiptWithOCR } from '@/lib/receiptScanner/claudeExtractor'
 import { getVendorLearningExamples, getGeneralLearningExamples } from '@/lib/receiptScanner/learningSystem'
 
 // Configure route to handle large payloads (base64 images)
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     })
 
     const body = await request.json()
-    const { imageData, familyId, storeName } = body
+    const { imageData, familyId, storeName, options } = body
 
     console.log('[scan-receipt] Request parsed', {
       hasImageData: !!imageData,
@@ -98,16 +98,52 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Extract receipt using Claude Vision with learning examples
-    console.log('[scan-receipt] Calling Claude Vision API...')
-    const result = await extractReceiptFromImage(imageBase64, mimeType, learningExamples)
+    // Phase 2: Decide which extraction method to use
+    let result
 
-    console.log('[scan-receipt] Claude Vision response', {
+    // Option 1: User explicitly enabled chunking
+    if (options?.enable_chunking && options?.estimated_item_count) {
+      console.log('[scan-receipt] Using CHUNKING extraction (user-enabled)', {
+        estimatedItems: options.estimated_item_count
+      })
+      result = await extractReceiptWithChunking(
+        imageBase64,
+        mimeType,
+        learningExamples,
+        options.estimated_item_count
+      )
+    }
+    // Option 2: User explicitly enabled OCR
+    else if (options?.enable_ocr) {
+      console.log('[scan-receipt] Using OCR-enhanced extraction (user-enabled)')
+      result = await extractReceiptWithOCR(imageBase64, mimeType, learningExamples)
+    }
+    // Option 3: Auto-enable chunking for very long receipts
+    else if (options?.estimated_item_count && options.estimated_item_count >= 35) {
+      console.log('[scan-receipt] Auto-enabling CHUNKING for long receipt', {
+        estimatedItems: options.estimated_item_count
+      })
+      result = await extractReceiptWithChunking(
+        imageBase64,
+        mimeType,
+        learningExamples,
+        options.estimated_item_count
+      )
+    }
+    // Default: Phase 1 extraction (anchor calibration + gap detection)
+    else {
+      console.log('[scan-receipt] Using standard extraction (Phase 1)')
+      result = await extractReceiptFromImage(imageBase64, mimeType, learningExamples)
+    }
+
+    console.log('[scan-receipt] Extraction response', {
       success: result.success,
       hasReceipt: !!result.receipt,
       error: result.error,
       itemCount: result.receipt?.items?.length,
-      confidence: result.confidence
+      confidence: result.confidence,
+      tokensUsed: result.tokens_used,
+      costUsd: result.cost_usd
     })
 
     return NextResponse.json(result)

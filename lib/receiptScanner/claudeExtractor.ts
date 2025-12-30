@@ -494,3 +494,383 @@ function calculateConfidence(receipt: ExtractedReceipt): number {
 
   return Math.round(score)
 }
+
+/**
+ * Extract a single chunk of a long receipt
+ */
+async function extractChunk(
+  client: Anthropic,
+  imageData: string,
+  mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+  chunk: { id: string; section: 'top' | 'middle' | 'bottom'; y_start_percent: number; y_end_percent: number; expected_item_range: string },
+  learningExamples: any[]
+): Promise<{ chunk: any; items: ReceiptItem[]; inputTokens: number; outputTokens: number }> {
+  const learningContext = formatLearningExamples(learningExamples)
+  const { generateChunkPrompt } = await import('@/lib/utils/receipt-chunking')
+  const chunkPrompt = generateChunkPrompt(chunk, EXTRACTION_PROMPT)
+  const fullPrompt = `${chunkPrompt}${learningContext}\n\nExtract items from this receipt chunk. Return as JSON:`
+
+  console.log(`[claudeExtractor] Extracting chunk: ${chunk.id} (${chunk.y_start_percent}% - ${chunk.y_end_percent}%)`)
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4096,
+    temperature: 0.1,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: mimeType,
+              data: imageData,
+            },
+          },
+          {
+            type: 'text',
+            text: fullPrompt
+          }
+        ],
+      }
+    ]
+  })
+
+  const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+  const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) ||
+                   responseText.match(/```\s*([\s\S]*?)\s*```/)
+  const jsonText = jsonMatch ? jsonMatch[1] : responseText
+  const chunkReceipt = JSON.parse(jsonText)
+
+  console.log(`[claudeExtractor] Chunk ${chunk.id} extracted`, {
+    itemCount: chunkReceipt.items?.length || 0,
+    inputTokens: message.usage.input_tokens,
+    outputTokens: message.usage.output_tokens
+  })
+
+  // Apply fallback categorization
+  const items = (chunkReceipt.items || []).map((item: ReceiptItem) => ({
+    ...item,
+    category: item.category || fallbackCategorizeItem(item.name),
+    is_food: item.is_food !== undefined ? item.is_food : true
+  }))
+
+  return {
+    chunk,
+    items,
+    inputTokens: message.usage.input_tokens,
+    outputTokens: message.usage.output_tokens
+  }
+}
+
+/**
+ * Extract receipt from image using chunking for long receipts (30+ items)
+ */
+export async function extractReceiptWithChunking(
+  imageData: string,
+  mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' = 'image/jpeg',
+  learningExamples: any[] = [],
+  estimatedItemCount: number
+): Promise<ReceiptExtractionResult> {
+  try {
+    console.log('[claudeExtractor] Starting CHUNKING extraction', {
+      mimeType,
+      estimatedItemCount,
+      timestamp: new Date().toISOString()
+    })
+
+    const client = getClaudeClient()
+    const { generateChunks, mergeChunkResults } = await import('@/lib/utils/receipt-chunking')
+
+    // Generate chunk definitions
+    const chunks = generateChunks(estimatedItemCount)
+    console.log('[claudeExtractor] Generated chunks', {
+      chunkCount: chunks.length,
+      chunks: chunks.map(c => `${c.id} (${c.y_start_percent}%-${c.y_end_percent}%)`)
+    })
+
+    // Extract all chunks in parallel
+    const chunkPromises = chunks.map(chunk =>
+      extractChunk(client, imageData, mimeType, chunk, learningExamples)
+    )
+
+    const chunkResults = await Promise.all(chunkPromises)
+
+    // Calculate total tokens from all chunks
+    let totalInputTokens = chunkResults.reduce((sum, r) => sum + r.inputTokens, 0)
+    let totalOutputTokens = chunkResults.reduce((sum, r) => sum + r.outputTokens, 0)
+
+    console.log('[claudeExtractor] All chunks extracted', {
+      totalItems: chunkResults.reduce((sum, r) => sum + r.items.length, 0),
+      totalInputTokens,
+      totalOutputTokens
+    })
+
+    // Merge and deduplicate chunk results
+    const mergedItems = mergeChunkResults(chunkResults, estimatedItemCount)
+
+    console.log('[claudeExtractor] Chunks merged', {
+      finalItemCount: mergedItems.length,
+      deduplicatedCount: chunkResults.reduce((sum, r) => sum + r.items.length, 0) - mergedItems.length
+    })
+
+    // Build a complete receipt from merged items
+    const receipt: ExtractedReceipt = {
+      purchase_date: '',
+      total: 0,
+      items: mergedItems,
+      quality_warnings: [`Chunking used: receipt split into ${chunks.length} sections for better accuracy`]
+    }
+
+    // Now run gap detection and verification on the merged result
+    const { findLineNumberGaps, formatGapsForPrompt, insertMissedItems } = await import('@/lib/utils/gap-detection')
+    const gaps = findLineNumberGaps(receipt.items || [])
+    const gapAnalysis = formatGapsForPrompt(gaps)
+
+    console.log('[claudeExtractor] Starting verification pass after chunking...')
+    const verification = await verifyExtraction(client, imageData, mimeType, receipt, gapAnalysis)
+
+    totalInputTokens += verification.inputTokens || 0
+    totalOutputTokens += verification.outputTokens || 0
+
+    // Add missed items if any
+    if (verification.missed_items && verification.missed_items.length > 0) {
+      console.log('[claudeExtractor] Found missed items in verification', {
+        missedCount: verification.missed_items.length
+      })
+
+      const missedItemsProcessed = verification.missed_items.map(item => ({
+        ...item,
+        category: item.category || fallbackCategorizeItem(item.name),
+        is_food: item.is_food !== undefined ? item.is_food : true,
+        source_text: item.source_text || `${item.name} (recovered in verification)`
+      }))
+
+      receipt.items = insertMissedItems(receipt.items || [], missedItemsProcessed)
+
+      if (!receipt.quality_warnings) receipt.quality_warnings = []
+      receipt.quality_warnings.push(
+        `Verification found ${verification.missed_items.length} additional item${verification.missed_items.length > 1 ? 's' : ''}`
+      )
+    }
+
+    // Calibrate positions
+    const { calibratePositions } = await import('@/lib/utils/receipt-positioning')
+    console.log('[claudeExtractor] Calibrating positions...')
+    receipt.items = calibratePositions(receipt.items || [])
+
+    const confidence = calculateConfidence(receipt)
+    const totalTokens = totalInputTokens + totalOutputTokens
+    const costUsd = (totalInputTokens * 3 / 1_000_000) + (totalOutputTokens * 15 / 1_000_000)
+
+    // Generate analytics
+    const { generateReceiptAnalytics, logAnalytics } = await import('@/lib/utils/receipt-analytics')
+    const analytics = generateReceiptAnalytics(receipt, {
+      initial_item_count: mergedItems.length,
+      verification_found_count: verification.missed_items?.length || 0,
+      gap_count: gaps.length,
+      high_confidence_gap_count: gaps.filter(g => g.confidence === 'high').length,
+      tokens_used: totalTokens,
+      cost_usd: costUsd
+    })
+    logAnalytics(analytics)
+
+    console.log('[claudeExtractor] Chunking extraction complete', {
+      finalItemCount: receipt.items?.length,
+      totalTokens,
+      costUsd: costUsd.toFixed(4)
+    })
+
+    return {
+      success: true,
+      receipt,
+      confidence,
+      tokens_used: totalTokens,
+      cost_usd: costUsd
+    }
+
+  } catch (error: any) {
+    console.error('[claudeExtractor] Chunking extraction failed:', error)
+    return {
+      success: false,
+      error: `Chunking extraction failed: ${error.message}`
+    }
+  }
+}
+
+/**
+ * Extract receipt from image using OCR preprocessing for pixel-perfect positioning
+ */
+export async function extractReceiptWithOCR(
+  imageData: string,
+  mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' = 'image/jpeg',
+  learningExamples: any[] = []
+): Promise<ReceiptExtractionResult> {
+  try {
+    console.log('[claudeExtractor] Starting OCR-enhanced extraction', {
+      mimeType,
+      timestamp: new Date().toISOString()
+    })
+
+    const client = getClaudeClient()
+    const { performOCR, formatOCRForPrompt, matchItemsToOCR, calculatePositionFromOCR } = await import('@/lib/utils/receipt-ocr')
+
+    // Step 1: Perform OCR
+    console.log('[claudeExtractor] Running OCR preprocessing...')
+    const ocrResult = await performOCR(imageData, mimeType)
+
+    if (!ocrResult) {
+      console.log('[claudeExtractor] OCR failed, falling back to standard extraction')
+      return await extractReceiptFromImage(imageData, mimeType, learningExamples)
+    }
+
+    console.log('[claudeExtractor] OCR complete', {
+      lineCount: ocrResult.lines.length,
+      avgConfidence: ocrResult.total_confidence.toFixed(1),
+      processingTime: ocrResult.processing_time_ms
+    })
+
+    // Step 2: Build OCR-enhanced prompt
+    const ocrContext = formatOCRForPrompt(ocrResult)
+    const learningContext = formatLearningExamples(learningExamples)
+    const fullPrompt = `${EXTRACTION_PROMPT}${ocrContext}${learningContext}\n\nExtract the receipt data. Return as JSON:`
+
+    console.log('[claudeExtractor] Calling Claude with OCR context...')
+
+    // Step 3: Extract with OCR-enhanced prompt
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      temperature: 0.1,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mimeType,
+                data: imageData,
+              },
+            },
+            {
+              type: 'text',
+              text: fullPrompt
+            }
+          ],
+        }
+      ]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) ||
+                     responseText.match(/```\s*([\s\S]*?)\s*```/)
+    const jsonText = jsonMatch ? jsonMatch[1] : responseText
+    let receipt = JSON.parse(jsonText)
+
+    console.log('[claudeExtractor] OCR extraction complete', {
+      itemCount: receipt.items?.length,
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens
+    })
+
+    // Apply fallback categorization
+    if (receipt.items) {
+      receipt.items = receipt.items.map((item: ReceiptItem) => ({
+        ...item,
+        category: item.category || fallbackCategorizeItem(item.name),
+        is_food: item.is_food !== undefined ? item.is_food : true
+      }))
+    }
+
+    // Step 4: Match items to OCR lines for pixel-perfect positioning
+    console.log('[claudeExtractor] Matching items to OCR lines...')
+    receipt.items = receipt.items.map((item: ReceiptItem) => {
+      const ocrLineId = matchItemsToOCR(item.source_text || item.name, ocrResult)
+      if (ocrLineId !== null) {
+        const ocrPosition = calculatePositionFromOCR(ocrLineId, ocrResult)
+        return {
+          ...item,
+          position_percent: ocrPosition,
+          ocr_line_id: ocrLineId,
+          ocr_confidence: ocrResult.lines.find(l => l.id === ocrLineId)?.avg_confidence
+        }
+      }
+      return item
+    })
+
+    let totalInputTokens = message.usage.input_tokens
+    let totalOutputTokens = message.usage.output_tokens
+
+    // Run gap detection and verification
+    const { findLineNumberGaps, formatGapsForPrompt, insertMissedItems } = await import('@/lib/utils/gap-detection')
+    const gaps = findLineNumberGaps(receipt.items || [])
+    const gapAnalysis = formatGapsForPrompt(gaps)
+
+    console.log('[claudeExtractor] Starting verification pass...')
+    const verification = await verifyExtraction(client, imageData, mimeType, receipt, gapAnalysis)
+
+    totalInputTokens += verification.inputTokens || 0
+    totalOutputTokens += verification.outputTokens || 0
+
+    // Add missed items
+    if (verification.missed_items && verification.missed_items.length > 0) {
+      const missedItemsProcessed = verification.missed_items.map(item => ({
+        ...item,
+        category: item.category || fallbackCategorizeItem(item.name),
+        is_food: item.is_food !== undefined ? item.is_food : true,
+        source_text: item.source_text || `${item.name} (recovered in verification)`
+      }))
+
+      receipt.items = insertMissedItems(receipt.items || [], missedItemsProcessed)
+
+      if (!receipt.quality_warnings) receipt.quality_warnings = []
+      receipt.quality_warnings.push(
+        `Verification found ${verification.missed_items.length} additional item${verification.missed_items.length > 1 ? 's' : ''}`
+      )
+    }
+
+    // Calibrate positions (though OCR already provides accurate positions)
+    const { calibratePositions } = await import('@/lib/utils/receipt-positioning')
+    receipt.items = calibratePositions(receipt.items || [])
+
+    const confidence = calculateConfidence(receipt)
+    const totalTokens = totalInputTokens + totalOutputTokens
+    const costUsd = (totalInputTokens * 3 / 1_000_000) + (totalOutputTokens * 15 / 1_000_000)
+
+    // Generate analytics
+    const { generateReceiptAnalytics, logAnalytics } = await import('@/lib/utils/receipt-analytics')
+    const analytics = generateReceiptAnalytics(receipt, {
+      initial_item_count: (receipt.items?.length || 0) - (verification.missed_items?.length || 0),
+      verification_found_count: verification.missed_items?.length || 0,
+      gap_count: gaps.length,
+      high_confidence_gap_count: gaps.filter(g => g.confidence === 'high').length,
+      tokens_used: totalTokens,
+      cost_usd: costUsd
+    })
+    logAnalytics(analytics)
+
+    console.log('[claudeExtractor] OCR extraction complete', {
+      finalItemCount: receipt.items?.length,
+      ocrMatchedItems: receipt.items.filter((i: ReceiptItem) => (i as any).ocr_line_id !== undefined).length,
+      totalTokens,
+      costUsd: costUsd.toFixed(4)
+    })
+
+    return {
+      success: true,
+      receipt,
+      confidence,
+      tokens_used: totalTokens,
+      cost_usd: costUsd
+    }
+
+  } catch (error: any) {
+    console.error('[claudeExtractor] OCR extraction failed:', error)
+    // Fallback to standard extraction
+    console.log('[claudeExtractor] Falling back to standard extraction...')
+    return await extractReceiptFromImage(imageData, mimeType, learningExamples)
+  }
+}
