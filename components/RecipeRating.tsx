@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 type FamilyMember = {
@@ -31,6 +31,7 @@ export default function RecipeRating({ recipeId, recipeName }: RecipeRatingProps
   const [loading, setLoading] = useState(true)
   const [hoveredMemberId, setHoveredMemberId] = useState<string | null>(null)
   const [hoveredStars, setHoveredStars] = useState<number>(0)
+  const [editingComments, setEditingComments] = useState<Record<string, string>>({})
 
   useEffect(() => {
     loadData()
@@ -110,7 +111,7 @@ export default function RecipeRating({ recipeId, recipeName }: RecipeRatingProps
     }
   }
 
-  const handleCommentUpdate = async (memberId: string, comment: string) => {
+  const handleCommentUpdate = useCallback(async (memberId: string, comment: string) => {
     const { error } = await supabase
       .from('recipe_ratings')
       .upsert({
@@ -122,9 +123,15 @@ export default function RecipeRating({ recipeId, recipeName }: RecipeRatingProps
       })
 
     if (!error) {
+      // Clear the local editing state for this member
+      setEditingComments(prev => {
+        const updated = { ...prev }
+        delete updated[memberId]
+        return updated
+      })
       loadData()
     }
-  }
+  }, [recipeId, supabase])
 
   const getRatingForMember = (memberId: string) => {
     return ratings.find(r => r.family_member_id === memberId)
@@ -242,8 +249,17 @@ export default function RecipeRating({ recipeId, recipeName }: RecipeRatingProps
                 <div className="mt-3">
                   <textarea
                     placeholder="Add a comment (optional)..."
-                    value={memberRating.comment || ''}
-                    onChange={(e) => handleCommentUpdate(member.id, e.target.value)}
+                    value={editingComments[member.id] ?? memberRating.comment ?? ''}
+                    onChange={(e) => {
+                      setEditingComments(prev => ({ ...prev, [member.id]: e.target.value }))
+                    }}
+                    onBlur={(e) => {
+                      const currentValue = e.target.value
+                      const savedValue = memberRating.comment || ''
+                      if (currentValue !== savedValue) {
+                        handleCommentUpdate(member.id, currentValue)
+                      }
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                     rows={2}
                   />
