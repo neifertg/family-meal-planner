@@ -503,14 +503,37 @@ async function extractChunk(
   imageData: string,
   mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
   chunk: { id: string; section: 'top' | 'middle' | 'bottom'; y_start_percent: number; y_end_percent: number; expected_item_range: string },
-  learningExamples: any[]
+  learningExamples: any[],
+  useZoom: boolean = true
 ): Promise<{ chunk: any; items: ReceiptItem[]; inputTokens: number; outputTokens: number }> {
   const learningContext = formatLearningExamples(learningExamples)
   const { generateChunkPrompt } = await import('@/lib/utils/receipt-chunking')
   const chunkPrompt = generateChunkPrompt(chunk, EXTRACTION_PROMPT)
-  const fullPrompt = `${chunkPrompt}${learningContext}\n\nExtract items from this receipt chunk. Return as JSON:`
 
-  console.log(`[claudeExtractor] Extracting chunk: ${chunk.id} (${chunk.y_start_percent}% - ${chunk.y_end_percent}%)`)
+  // Apply dynamic zoom if enabled
+  let processedImageData = imageData
+  let zoomPrompt = ''
+
+  if (useZoom) {
+    const { cropAndZoomImage, generateZoomPrompt } = await import('@/lib/utils/image-zoom')
+    const zoomRegion = {
+      y_start_percent: chunk.y_start_percent,
+      y_end_percent: chunk.y_end_percent,
+      description: chunk.expected_item_range,
+      zoom_level: 1.5  // 1.5x zoom for better readability
+    }
+
+    // Try to crop and zoom, falls back to original if it fails
+    processedImageData = await cropAndZoomImage(imageData, mimeType, zoomRegion)
+    zoomPrompt = generateZoomPrompt(zoomRegion)
+  }
+
+  const fullPrompt = `${chunkPrompt}${zoomPrompt}${learningContext}\n\nExtract items from this receipt chunk. Return as JSON:`
+
+  console.log(`[claudeExtractor] Extracting chunk: ${chunk.id} (${chunk.y_start_percent}% - ${chunk.y_end_percent}%)`, {
+    useZoom,
+    zoomLevel: useZoom ? '1.5x' : 'none'
+  })
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
@@ -525,7 +548,7 @@ async function extractChunk(
             source: {
               type: 'base64',
               media_type: mimeType,
-              data: imageData,
+              data: processedImageData,  // Use zoomed/cropped image if available
             },
           },
           {
@@ -590,9 +613,9 @@ export async function extractReceiptWithChunking(
       chunks: chunks.map(c => `${c.id} (${c.y_start_percent}%-${c.y_end_percent}%)`)
     })
 
-    // Extract all chunks in parallel
+    // Extract all chunks in parallel with dynamic zoom enabled
     const chunkPromises = chunks.map(chunk =>
-      extractChunk(client, imageData, mimeType, chunk, learningExamples)
+      extractChunk(client, imageData, mimeType, chunk, learningExamples, true)
     )
 
     const chunkResults = await Promise.all(chunkPromises)
