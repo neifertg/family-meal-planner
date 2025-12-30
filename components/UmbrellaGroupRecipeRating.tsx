@@ -46,6 +46,7 @@ export default function UmbrellaGroupRecipeRating({ recipeId, recipeName }: Umbr
   const [loading, setLoading] = useState(true)
   const [hoveredStars, setHoveredStars] = useState<number>(0)
   const [isHovered, setIsHovered] = useState(false)
+  const [editingComment, setEditingComment] = useState<string>('')
 
   useEffect(() => {
     loadData()
@@ -199,27 +200,57 @@ export default function UmbrellaGroupRecipeRating({ recipeId, recipeName }: Umbr
       })
 
     if (!error) {
-      loadData()
-      loadGroupRatings(selectedGroupId)
+      // Update local state immediately
+      const existingRatingIndex = groupRatings.findIndex(r => r.user_id === currentUser.id)
+      if (existingRatingIndex >= 0) {
+        setGroupRatings(prev => prev.map((r, i) =>
+          i === existingRatingIndex ? { ...r, rating } : r
+        ))
+      } else if (currentUser) {
+        const newRating: GroupRating = {
+          id: `temp-${Date.now()}`,
+          recipe_id: recipeId,
+          umbrella_group_id: selectedGroupId,
+          user_id: currentUser.id,
+          rating,
+          comment: null,
+          created_at: new Date().toISOString(),
+          user: currentUser
+        }
+        setGroupRatings(prev => [...prev, newRating])
+      }
     }
   }
 
   const handleCommentUpdate = async (comment: string) => {
     if (!currentUser || !selectedGroupId) return
 
+    const userRating = groupRatings.find(r => r.user_id === currentUser.id)
+    if (!userRating) {
+      console.error('[UmbrellaGroupRecipeRating] Cannot update comment without a rating')
+      return
+    }
+
     const { error } = await supabase
       .from('umbrella_group_recipe_ratings')
-      .upsert({
-        recipe_id: recipeId,
-        umbrella_group_id: selectedGroupId,
-        user_id: currentUser.id,
+      .update({
         comment: comment
-      }, {
-        onConflict: 'recipe_id,umbrella_group_id,user_id'
       })
+      .eq('recipe_id', recipeId)
+      .eq('umbrella_group_id', selectedGroupId)
+      .eq('user_id', currentUser.id)
 
     if (!error) {
-      loadGroupRatings(selectedGroupId)
+      // Update local state immediately
+      setGroupRatings(prev => prev.map(r =>
+        r.user_id === currentUser.id
+          ? { ...r, comment }
+          : r
+      ))
+      // Clear editing state
+      setEditingComment('')
+    } else {
+      console.error('[UmbrellaGroupRecipeRating] Error updating comment:', error)
     }
   }
 
@@ -384,8 +415,15 @@ export default function UmbrellaGroupRecipeRating({ recipeId, recipeName }: Umbr
                 <div>
                   <textarea
                     placeholder="Add a comment (optional)..."
-                    value={userRating.comment || ''}
-                    onChange={(e) => handleCommentUpdate(e.target.value)}
+                    value={editingComment || userRating.comment || ''}
+                    onChange={(e) => setEditingComment(e.target.value)}
+                    onBlur={(e) => {
+                      const currentValue = e.target.value.trim()
+                      const savedValue = (userRating.comment || '').trim()
+                      if (currentValue !== savedValue) {
+                        handleCommentUpdate(currentValue)
+                      }
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                     rows={2}
                   />
