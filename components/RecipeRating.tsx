@@ -107,31 +107,78 @@ export default function RecipeRating({ recipeId, recipeName }: RecipeRatingProps
       })
 
     if (!error) {
-      loadData()
+      // Update local state immediately without full reload
+      const existingRating = ratings.find(r => r.family_member_id === memberId)
+      if (existingRating) {
+        // Update existing rating
+        setRatings(prev => prev.map(r =>
+          r.family_member_id === memberId
+            ? { ...r, rating }
+            : r
+        ))
+      } else {
+        // Add new rating
+        const member = familyMembers.find(m => m.id === memberId)
+        if (member) {
+          const newRating: RecipeRating = {
+            id: `temp-${Date.now()}`,
+            recipe_id: recipeId,
+            family_member_id: memberId,
+            rating,
+            comment: null,
+            created_at: new Date().toISOString(),
+            family_members: member
+          }
+          setRatings(prev => [...prev, newRating])
+        }
+      }
     }
   }
 
   const handleCommentUpdate = useCallback(async (memberId: string, comment: string) => {
-    const { error } = await supabase
+    console.log('[handleCommentUpdate] Called', { memberId, comment, recipeId })
+
+    // Get the current rating for this member
+    const memberRating = ratings.find(r => r.family_member_id === memberId)
+
+    if (!memberRating) {
+      console.error('[handleCommentUpdate] Cannot update comment without a rating', { memberId, ratings })
+      return
+    }
+
+    console.log('[handleCommentUpdate] Found member rating', { memberRating })
+
+    const { data, error } = await supabase
       .from('recipe_ratings')
-      .upsert({
-        recipe_id: recipeId,
-        family_member_id: memberId,
+      .update({
         comment: comment
-      }, {
-        onConflict: 'recipe_id,family_member_id'
       })
+      .eq('recipe_id', recipeId)
+      .eq('family_member_id', memberId)
+      .select()
+
+    console.log('[handleCommentUpdate] Database response', { data, error })
 
     if (!error) {
+      // Update local state immediately without full reload
+      setRatings(prev => prev.map(r =>
+        r.family_member_id === memberId
+          ? { ...r, comment, created_at: r.created_at || new Date().toISOString() }
+          : r
+      ))
+
       // Clear the local editing state for this member
       setEditingComments(prev => {
         const updated = { ...prev }
         delete updated[memberId]
         return updated
       })
-      loadData()
+
+      console.log('[handleCommentUpdate] Successfully updated comment')
+    } else {
+      console.error('[handleCommentUpdate] Error updating comment:', error)
     }
-  }, [recipeId, supabase])
+  }, [recipeId, supabase, ratings])
 
   const getRatingForMember = (memberId: string) => {
     return ratings.find(r => r.family_member_id === memberId)
@@ -254,8 +301,14 @@ export default function RecipeRating({ recipeId, recipeName }: RecipeRatingProps
                       setEditingComments(prev => ({ ...prev, [member.id]: e.target.value }))
                     }}
                     onBlur={(e) => {
-                      const currentValue = e.target.value
-                      const savedValue = memberRating.comment || ''
+                      const currentValue = e.target.value.trim()
+                      const savedValue = (memberRating.comment || '').trim()
+                      console.log('[RecipeRating] onBlur triggered', {
+                        memberId: member.id,
+                        currentValue,
+                        savedValue,
+                        willUpdate: currentValue !== savedValue
+                      })
                       if (currentValue !== savedValue) {
                         handleCommentUpdate(member.id, currentValue)
                       }
