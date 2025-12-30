@@ -259,6 +259,12 @@ export default function ShoppingListPage() {
               console.log(`Scaling recipe "${recipe.name}": ${baseServings} servings -> ${targetServings} servings`)
 
               ingredients.forEach((ingredient: string) => {
+                // Skip header ingredients (e.g., "For the Chicken:", "For the Soup Base:")
+                if (isIngredientHeader(ingredient)) {
+                  console.log(`Skipping header ingredient: "${ingredient}"`)
+                  return
+                }
+
                 // Scale ingredient based on servings
                 const scaledIngredient = scaleIngredient(ingredient, baseServings, targetServings)
 
@@ -288,6 +294,12 @@ export default function ShoppingListPage() {
           const adhocIngredients = Array.isArray(plan.adhoc_ingredients) ? plan.adhoc_ingredients : []
 
           adhocIngredients.forEach((ingredient: string) => {
+            // Skip header ingredients
+            if (isIngredientHeader(ingredient)) {
+              console.log(`Skipping header ingredient: "${ingredient}"`)
+              return
+            }
+
             const parsed = parseIngredient(ingredient)
             const existingKeys = Array.from(ingredientMap.keys())
 
@@ -1136,14 +1148,70 @@ function findOrCreateIngredientKey(
   return newCore
 }
 
+// Check if an ingredient is actually a section header
+function isIngredientHeader(ingredient: string): boolean {
+  const text = ingredient.trim().toLowerCase()
+
+  // Headers typically start with "for the" or "for"
+  if (text.startsWith('for the ') || text.startsWith('for ')) {
+    return true
+  }
+
+  // Headers often end with a colon
+  if (text.endsWith(':')) {
+    return true
+  }
+
+  // Headers with pattern like "Ingredient Name:" or "For the Sauce:"
+  const headerPatterns = [
+    /^for\s+the\s+/i,
+    /^ingredients?\s*:/i,
+    /^sauce\s*:/i,
+    /^marinade\s*:/i,
+    /^garnish\s*:/i,
+    /^topping\s*:/i,
+    /^filling\s*:/i,
+    /^dressing\s*:/i,
+  ]
+
+  return headerPatterns.some(pattern => pattern.test(text))
+}
+
 // Parse ingredient string to extract item name and quantity
 function parseIngredient(ingredient: string): { item: string; quantity: string; fullText: string } {
   const text = ingredient.trim()
 
   // Common patterns: "2 cups chicken broth", "1 lb ground beef", "3 eggs"
+  // But also handle weird formats like "Small (1 1/2 Cup) Carrots"
+
+  // First, try to match pattern: Size (quantity unit) ingredient
+  const weirdPattern = /^(small|medium|large)\s*\(([^)]+)\)\s+(.+)/i
+  const weirdMatch = text.match(weirdPattern)
+
+  if (weirdMatch) {
+    // Extract: "Small (1 1/2 Cup) Carrots" -> "1 1/2 Cup Carrots"
+    const quantity = weirdMatch[2].trim()
+    const ingredientName = weirdMatch[3].trim()
+    const reconstructed = `${quantity} ${ingredientName}`
+
+    // Now parse the reconstructed version normally
+    const measurementPattern = /^(\d+\/?\d*|\d*\.?\d+|\d+\s+\d+\/\d+)?\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|whole|stalk|stalks)s?\s+/i
+    let itemName = reconstructed.replace(measurementPattern, '').trim()
+    itemName = itemName.split(',')[0].trim()
+    itemName = itemName.split('(')[0].trim()
+
+    const coreIngredient = extractCoreIngredient(itemName)
+
+    return {
+      item: coreIngredient || ingredientName,
+      quantity: reconstructed,
+      fullText: reconstructed
+    }
+  }
+
   // Extract the main item by removing quantities and measurements from the beginning only
   // Note: size descriptors (large/medium/small) are handled in extractCoreIngredient
-  const measurementPattern = /^(\d+\/?\d*|\d*\.?\d+)?\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|whole)s?\s+/i
+  const measurementPattern = /^(\d+\/?\d*|\d*\.?\d+|\d+\s+\d+\/\d+)?\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|whole|stalk|stalks)s?\s+/i
 
   let itemName = text.replace(measurementPattern, '').trim()
 
