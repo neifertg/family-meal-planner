@@ -18,11 +18,19 @@
 ### 4. Receipt Scanning: Phase 2 Enhancements
 **Status:** ✅ Complete and Deployed
 
-**Chunking (for long receipts 30+ items):**
-- Splits receipts into 3 overlapping chunks
+**Chunking (for receipts 10+ items):**
+- **NEW:** Splits receipts into smaller chunks (~10 items each, changed from 30)
+- **NEW:** Auto-enables at 15+ items (changed from 35)
 - Parallel extraction reduces cognitive load
 - Deduplication handles overlap regions
-- Expected: 85% → 98% capture rate on 40+ item receipts
+- Expected: 85% → 98% capture rate on long receipts
+
+**Dynamic Zoom (NEW!):**
+- **Crops and zooms 1.5x into each chunk** for enhanced accuracy
+- Better price extraction (clearer decimal points and digits)
+- Improved item name reading (easier to read small text)
+- Automatic integration with chunking system
+- Uses Sharp library when available, graceful fallback otherwise
 
 **OCR Preprocessing (for pixel-perfect positioning):**
 - Tesseract.js integration for bounding box extraction
@@ -31,7 +39,8 @@
 
 **Integration:**
 - Opt-in via API parameters (enable_chunking, enable_ocr)
-- Auto-enable chunking for 35+ item receipts
+- Auto-enable chunking for 15+ item receipts
+- Zoom automatically applied to all chunks
 - Graceful fallback to Phase 1 if Phase 2 fails
 
 All features are live in production. See full documentation in:

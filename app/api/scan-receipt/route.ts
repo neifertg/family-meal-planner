@@ -118,9 +118,9 @@ export async function POST(request: NextRequest) {
       console.log('[scan-receipt] Using OCR-enhanced extraction (user-enabled)')
       result = await extractReceiptWithOCR(imageBase64, mimeType, learningExamples)
     }
-    // Option 3: Auto-enable chunking for very long receipts
-    else if (options?.estimated_item_count && options.estimated_item_count >= 35) {
-      console.log('[scan-receipt] Auto-enabling CHUNKING for long receipt', {
+    // Option 3: Auto-enable chunking for receipts with 15+ items
+    else if (options?.estimated_item_count && options.estimated_item_count >= 15) {
+      console.log('[scan-receipt] Auto-enabling CHUNKING for receipt with 15+ items', {
         estimatedItems: options.estimated_item_count
       })
       result = await extractReceiptWithChunking(

@@ -12,27 +12,30 @@ Phase 2 adds two complementary enhancements to improve receipt scanning for edge
 **File:** `lib/utils/receipt-chunking.ts`
 
 **Features:**
-- Splits long receipts into 3 overlapping chunks (top 0-60%, middle 40-100%, bottom 60-100%)
-- 20% overlap regions to ensure no items missed
+- **NEW:** Splits receipts into smaller chunks of ~10 items each (changed from 30-item chunks)
+- **NEW:** Auto-enables at 10+ items (changed from 30+ items)
+- Dynamic chunk generation based on receipt length
+- 20% overlap regions between chunks to ensure no items missed
 - Deduplication logic for items in overlap regions
 - Intelligent merging of chunk results
 
 **Key Functions:**
-- `shouldUseChunking(estimatedItemCount)` - Decision logic
-- `generateChunks(estimatedItemCount)` - Creates chunk definitions
+- `shouldUseChunking(estimatedItemCount)` - Decision logic (threshold: 10 items)
+- `generateChunks(estimatedItemCount)` - Creates dynamic chunk definitions
 - `deduplicateChunkItems(chunkResults)` - Removes duplicates from overlaps
 - `mergeChunkResults(chunkResults)` - Combines all chunks into final result
 - `generateChunkPrompt(chunk, basePrompt)` - Chunk-specific extraction instructions
 
 **When to Use:**
-- Receipts with 30+ items (estimated or confirmed)
-- Long receipts where Phase 1 shows <95% capture rate
-- Very long receipts (40+ items) where chunking is almost always beneficial
+- Receipts with 10+ items (auto-enabled at 15+ via API)
+- Any receipt where higher accuracy is desired
+- Receipts with small or hard-to-read text
 
 **Cost Impact:**
-- Short receipts (< 30 items): No change ($0.08-0.15)
-- Long receipts (30-40 items): +$0.10-0.15 (3 extraction calls instead of 1)
-- Very long receipts (40+ items): Worth the cost for accuracy improvement
+- Short receipts (< 10 items): No change ($0.08-0.12)
+- Medium receipts (10-20 items): +$0.08-0.12 (2-3 chunks)
+- Long receipts (20-40 items): +$0.15-0.30 (3-5 chunks)
+- Very long receipts (40+ items): +$0.30-0.50 (5-7 chunks, worth it for accuracy)
 
 ---
 
@@ -62,6 +65,41 @@ Phase 2 adds two complementary enhancements to improve receipt scanning for edge
 - OCR processing: Client-side (free, but adds 2-5s processing time)
 - Claude extraction: Same cost, but prompt is slightly larger (+100-200 tokens)
 - Net cost impact: ~+$0.005-0.01 per receipt
+
+---
+
+### 3. Dynamic Zoom Utility (NEW!)
+**File:** `lib/utils/image-zoom.ts`
+
+**Features:**
+- **Crops and zooms into specific regions of receipt** for enhanced accuracy
+- 1.5x zoom on each chunk for better readability of items and prices
+- Uses Sharp library (server-side) for image processing when available
+- Graceful fallback to prompt-based focus instructions when cropping unavailable
+- Automatic integration with chunking system
+
+**Key Functions:**
+- `cropAndZoomImage(imageBase64, region)` - Crops and zooms to specific region
+- `generateZoomPrompt(region)` - Creates focus instructions for Claude
+- `shouldUseZoom(itemCount)` - Decision logic for zoom usage
+- `generateZoomRegions(itemCount)` - Creates zoom region definitions
+
+**When to Use:**
+- Automatically enabled with chunking (each chunk is zoomed)
+- Receipts with small or hard-to-read text
+- Long receipts where items might be compressed
+- When maximum price/item accuracy is critical
+
+**Benefits:**
+- **Improved price accuracy** - Zoom makes decimal points and digits clearer
+- **Better item name extraction** - Easier to read abbreviations and small text
+- **Reduced misreads** - Larger text = fewer OCR/vision errors
+- **Contextual validation** - Claude can better compare similar items
+
+**Cost Impact:**
+- Minimal - same number of API calls, just with cropped/zoomed images
+- Slightly larger image files but still well within API limits
+- Processing time: +0.5-1s per chunk for cropping (if Sharp available)
 
 ---
 

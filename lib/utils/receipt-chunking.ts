@@ -8,9 +8,9 @@
 import { ReceiptItem } from '../receiptScanner/types'
 
 export interface ChunkConfig {
-  min_items_for_chunking: number  // Default: 30
+  min_items_for_chunking: number  // Default: 10 (changed from 30)
   chunk_overlap_percent: number    // Default: 0.2 (20% overlap)
-  chunk_count: number               // Default: 3 (top, middle, bottom)
+  chunk_size_items: number          // Default: 10 items per chunk
 }
 
 export interface ImageChunk {
@@ -25,7 +25,7 @@ export interface ImageChunk {
  * Decide whether to use chunking based on estimated item count
  */
 export function shouldUseChunking(estimatedItemCount: number, config?: Partial<ChunkConfig>): boolean {
-  const minItems = config?.min_items_for_chunking || 30
+  const minItems = config?.min_items_for_chunking || 10
   return estimatedItemCount >= minItems
 }
 
@@ -33,54 +33,58 @@ export function shouldUseChunking(estimatedItemCount: number, config?: Partial<C
  * Generate chunk definitions for splitting a receipt image
  */
 export function generateChunks(estimatedItemCount: number, config?: Partial<ChunkConfig>): ImageChunk[] {
-  const chunkCount = config?.chunk_count || 3
+  const chunkSizeItems = config?.chunk_size_items || 10
   const overlapPercent = config?.chunk_overlap_percent || 0.2
 
-  if (chunkCount === 3) {
-    // Three overlapping chunks with 20% overlap
-    // Top: 0-60%, Middle: 40-100%, Bottom: 60-100%
-    // This creates two 20% overlap regions
-    return [
-      {
-        id: 'top',
-        section: 'top',
-        y_start_percent: 0,
-        y_end_percent: 60,
-        expected_item_range: `items 1-${Math.ceil(estimatedItemCount * 0.6)}`
-      },
-      {
-        id: 'middle',
-        section: 'middle',
-        y_start_percent: 40,
-        y_end_percent: 100,
-        expected_item_range: `items ${Math.ceil(estimatedItemCount * 0.4)}-${estimatedItemCount}`
-      },
-      {
-        id: 'bottom',
-        section: 'bottom',
-        y_start_percent: 60,
-        y_end_percent: 100,
-        expected_item_range: `items ${Math.ceil(estimatedItemCount * 0.6)}-${estimatedItemCount}`
-      }
-    ]
+  // Calculate how many chunks we need (each chunk handles ~10 items)
+  const numChunks = Math.ceil(estimatedItemCount / chunkSizeItems)
+
+  // If only 1-2 chunks needed, use simpler chunking
+  if (numChunks <= 1) {
+    return [{
+      id: 'full',
+      section: 'top',
+      y_start_percent: 0,
+      y_end_percent: 100,
+      expected_item_range: `items 1-${estimatedItemCount}`
+    }]
   }
 
-  // Generic chunking for other chunk counts
-  const chunkSize = 100 / chunkCount
-  const overlap = chunkSize * overlapPercent
+  const chunks: ImageChunk[] = []
+  const itemsPerChunk = chunkSizeItems
+  const overlapItems = Math.floor(itemsPerChunk * overlapPercent)
 
-  return Array.from({ length: chunkCount }, (_, i) => {
-    const start = Math.max(0, i * chunkSize - (i > 0 ? overlap : 0))
-    const end = Math.min(100, (i + 1) * chunkSize + (i < chunkCount - 1 ? overlap : 0))
+  for (let i = 0; i < numChunks; i++) {
+    // Calculate item range for this chunk with overlap
+    const startItem = Math.max(1, i * itemsPerChunk - (i > 0 ? overlapItems : 0) + 1)
+    const endItem = Math.min(estimatedItemCount, (i + 1) * itemsPerChunk + (i < numChunks - 1 ? overlapItems : 0))
 
-    return {
+    // Convert item positions to percentages
+    const startPercent = Math.max(0, Math.round((startItem - 1) / estimatedItemCount * 100))
+    const endPercent = Math.min(100, Math.round(endItem / estimatedItemCount * 100))
+
+    const section: 'top' | 'middle' | 'bottom' =
+      i === 0 ? 'top' :
+      i === numChunks - 1 ? 'bottom' :
+      'middle'
+
+    chunks.push({
       id: `chunk_${i + 1}`,
-      section: i === 0 ? 'top' : i === chunkCount - 1 ? 'bottom' : 'middle',
-      y_start_percent: start,
-      y_end_percent: end,
-      expected_item_range: `chunk ${i + 1} of ${chunkCount}`
-    }
+      section,
+      y_start_percent: startPercent,
+      y_end_percent: endPercent,
+      expected_item_range: `items ${startItem}-${endItem}`
+    })
+  }
+
+  console.log('[receipt-chunking] Generated chunks', {
+    totalItems: estimatedItemCount,
+    itemsPerChunk: chunkSizeItems,
+    numChunks: chunks.length,
+    chunks: chunks.map(c => `${c.id}: ${c.expected_item_range} (${c.y_start_percent}%-${c.y_end_percent}%)`)
   })
+
+  return chunks
 }
 
 /**
