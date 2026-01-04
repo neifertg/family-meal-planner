@@ -613,9 +613,38 @@ export async function extractReceiptWithChunking(
       chunks: chunks.map(c => `${c.id} (${c.y_start_percent}%-${c.y_end_percent}%)`)
     })
 
-    // Extract all chunks in parallel with dynamic zoom enabled
+    // Check image resolution to decide if zoom should be used
+    // Zoom only helps with high-resolution images (>= 1500px tall)
+    // For low-res images, zooming creates blurry upscaled crops
+    let shouldEnableZoom = true
+    try {
+      const sharp = await import('sharp').catch(() => null)
+      if (sharp) {
+        const imageBuffer = Buffer.from(imageData, 'base64')
+        const metadata = await sharp.default(imageBuffer).metadata()
+        const imageHeight = metadata.height || 0
+
+        // Disable zoom for low-resolution images
+        if (imageHeight < 1500) {
+          shouldEnableZoom = false
+          console.log('[claudeExtractor] Disabling zoom for low-resolution image', {
+            imageHeight,
+            reason: 'Image too small - zoom would create blurry crops'
+          })
+        } else {
+          console.log('[claudeExtractor] Zoom enabled for high-resolution image', {
+            imageHeight
+          })
+        }
+      }
+    } catch (error) {
+      console.log('[claudeExtractor] Could not determine image size, disabling zoom')
+      shouldEnableZoom = false
+    }
+
+    // Extract all chunks in parallel with dynamic zoom (if image is high-res)
     const chunkPromises = chunks.map(chunk =>
-      extractChunk(client, imageData, mimeType, chunk, learningExamples, true)
+      extractChunk(client, imageData, mimeType, chunk, learningExamples, shouldEnableZoom)
     )
 
     const chunkResults = await Promise.all(chunkPromises)
