@@ -989,13 +989,25 @@ function extractCoreIngredient(name: string): string {
   // Remove all measurement-related words that might have been missed
   core = core.replace(/\b(about|approximately|roughly|around)\b/gi, '').trim()
 
-  // Comprehensive list of descriptors to remove - anything that's optional shopping preference
-  const allDescriptors = [
-    // Preparation methods
-    'fresh', 'frozen', 'canned', 'dried', 'chopped', 'diced', 'sliced',
-    'minced', 'crushed', 'ground', 'shredded', 'grated', 'crumbled',
-    'peeled', 'deveined', 'trimmed', 'cut', 'halved', 'quartered',
-    'julienned', 'cubed', 'chunked', 'mashed', 'pureed', 'blended',
+  // CRITICAL DESCRIPTORS TO KEEP - these change the product significantly
+  const criticalDescriptors = new Set([
+    // Protein cuts/types - these are different products
+    'ground', 'breast', 'thigh', 'wing', 'leg', 'drumstick', 'tender', 'whole',
+    // Dairy variants - completely different products
+    'sour', 'heavy', 'whipping', 'cream cheese',
+    // Bean/legume colors - different varieties
+    'black', 'kidney', 'pinto', 'white', 'green', 'red',
+    // Cheese types
+    'cheddar', 'mozzarella', 'parmesan', 'feta', 'swiss', 'gouda',
+    // Produce forms that matter
+    'crushed', 'diced', 'whole', 'stewed', 'paste', 'sauce'
+  ])
+
+  // Safe-to-remove descriptors - truly optional preferences
+  const removableDescriptors = [
+    // Preparation states (you'll prepare at home anyway)
+    'chopped', 'sliced', 'minced', 'peeled', 'deveined', 'trimmed',
+    'halved', 'quartered', 'julienned', 'cubed', 'chunked',
 
     // Cooking states
     'raw', 'cooked', 'pre-cooked', 'uncooked', 'blanched', 'roasted',
@@ -1009,7 +1021,7 @@ function extractCoreIngredient(name: string): string {
     'wild-caught', 'farm-raised', 'sustainable',
 
     // Health/diet descriptors (user decides at store)
-    'low-fat', 'reduced-fat', 'fat-free', 'nonfat', 'whole', 'skim',
+    'low-fat', 'reduced-fat', 'fat-free', 'nonfat', 'skim',
     'low-sodium', 'reduced-sodium', 'sodium-free', 'no-salt', 'unsalted', 'salted',
     'low-sugar', 'sugar-free', 'unsweetened', 'sweetened', 'no-sugar-added',
     'gluten-free', 'dairy-free', 'vegan', 'vegetarian',
@@ -1019,19 +1031,20 @@ function extractCoreIngredient(name: string): string {
     'extra-virgin', 'virgin', 'pure', 'refined', 'unrefined',
     'grade-a', 'grade-b', 'choice', 'select', 'prime',
 
-    // Physical descriptors
+    // Size descriptors
     'large', 'medium', 'small', 'extra-large', 'jumbo', 'baby', 'mini',
-    'thick', 'thin', 'fine', 'coarse', 'whole', 'half', 'pieces',
-    'boneless', 'bone-in', 'skinless', 'skin-on',
+    'thick', 'thin', 'fine', 'coarse', 'pieces',
 
-    // Color descriptors (usually optional)
-    'white', 'red', 'green', 'yellow', 'black', 'brown', 'golden'
+    // Meat preparation (if not critical cut)
+    'boneless', 'bone-in', 'skinless', 'skin-on'
   ]
 
-  // Remove descriptors
-  allDescriptors.forEach(descriptor => {
-    const regex = new RegExp(`\\b${descriptor}\\b`, 'gi')
-    core = core.replace(regex, '').trim()
+  // Only remove safe descriptors, preserve critical ones
+  removableDescriptors.forEach(descriptor => {
+    if (!criticalDescriptors.has(descriptor)) {
+      const regex = new RegExp(`\\b${descriptor}\\b`, 'gi')
+      core = core.replace(regex, '').trim()
+    }
   })
 
   // Normalize plurals to singular for better matching
@@ -1044,54 +1057,37 @@ function extractCoreIngredient(name: string): string {
     'mushrooms': 'mushroom',
     'chickens': 'chicken',
     'eggs': 'egg',
-    'beans': 'bean',
-    'peas': 'pea',
     'berries': 'berry'
   }
 
-  // Apply plural to singular
+  // Apply plural to singular (but preserve "beans" and "peas" for color matching)
   Object.entries(pluralToSingular).forEach(([plural, singular]) => {
     const regex = new RegExp(`\\b${plural}\\b`, 'gi')
     core = core.replace(regex, singular)
   })
 
-  // Normalize specific ingredient variations to canonical form
+  // Smart canonical forms - only merge when truly interchangeable
   const canonicalForms: Record<string, string> = {
-    // Chicken parts all become "chicken"
-    'chicken breast': 'chicken',
-    'chicken thigh': 'chicken',
-    'chicken leg': 'chicken',
-    'chicken wing': 'chicken',
-    'chicken drumstick': 'chicken',
-    'chicken tender': 'chicken',
-
-    // Stock = broth
+    // Stock = broth (truly the same)
     'chicken stock': 'chicken broth',
     'beef stock': 'beef broth',
     'vegetable stock': 'vegetable broth',
 
-    // All oils become "cooking oil" unless specific type is in the name
-    'olive oil': 'olive oil',
+    // Specific oils to generic (only for truly generic oils)
     'vegetable oil': 'cooking oil',
     'canola oil': 'cooking oil',
     'sunflower oil': 'cooking oil',
     'corn oil': 'cooking oil',
+    // Keep olive oil, sesame oil, etc. separate - they're not interchangeable
 
     // Garlic variations
     'garlic clove': 'garlic',
     'clove garlic': 'garlic',
 
-    // Dairy
-    'heavy cream': 'cream',
-    'whipping cream': 'cream',
-    'half-and-half': 'cream',
-
-    // Rice types (keep main variety but remove sub-types)
-    'jasmine rice': 'rice',
-    'basmati rice': 'rice',
-    'arborio rice': 'rice',
+    // Only merge rice types if no specific variety mentioned
     'long-grain rice': 'rice',
     'short-grain rice': 'rice'
+    // Keep jasmine, basmati, arborio separate - recipes need specific types
   }
 
   // Apply canonical forms
@@ -1140,7 +1136,7 @@ function stringSimilarity(str1: string, str2: string): number {
 function findOrCreateIngredientKey(
   newIngredient: string,
   existingKeys: string[],
-  threshold: number = 0.75
+  threshold: number = 0.85  // Increased from 0.75 to reduce false matches
 ): string {
   const newCore = extractCoreIngredient(newIngredient)
 
