@@ -394,10 +394,18 @@ export default function ShoppingListPage() {
   const toggleItem = async (id: string, currentStatus: boolean) => {
     const newStatus = !currentStatus
 
+    // Save current scroll position
+    const scrollPosition = window.scrollY
+
     // Optimistic update - update UI immediately
     setItems(items.map(item =>
       item.id === id ? { ...item, is_checked: newStatus } : item
     ))
+
+    // Restore scroll position after React re-renders
+    requestAnimationFrame(() => {
+      window.scrollTo(0, scrollPosition)
+    })
 
     // Try to update with checked_at, fall back to just is_checked if column doesn't exist
     const updateData: any = { is_checked: newStatus }
