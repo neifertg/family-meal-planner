@@ -848,7 +848,14 @@ export default function ShoppingListPage() {
                           </button>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <div className={`text-sm font-medium ${item.is_checked ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                              <div
+                                className={`text-sm font-medium ${item.is_checked ? 'line-through text-gray-500' : 'text-gray-900'} ${(item.recipe_names?.length || 0) + (item.adhoc_meal_names?.length || 0) > 0 ? 'cursor-help' : ''}`}
+                                title={
+                                  (item.recipe_names?.length || 0) + (item.adhoc_meal_names?.length || 0) > 0
+                                    ? `Used in: ${[...(item.recipe_names || []), ...(item.adhoc_meal_names || [])].join(', ')}`
+                                    : undefined
+                                }
+                              >
                                 {item.name}
                               </div>
                               {item.inventoryStatus?.inStock && (
