@@ -268,6 +268,11 @@ export default function ShoppingListPage() {
                 // Scale ingredient based on servings
                 const scaledIngredient = scaleIngredient(ingredient, baseServings, targetServings)
 
+                // Log scaling for debugging
+                if (ingredient !== scaledIngredient) {
+                  console.log(`  Scaled: "${ingredient}" → "${scaledIngredient}"`)
+                }
+
                 const parsed = parseIngredient(scaledIngredient)
                 const existingKeys = Array.from(ingredientMap.keys())
 
