@@ -1206,7 +1206,7 @@ function parseIngredient(ingredient: string): { item: string; quantity: string; 
     const reconstructed = `${quantity} ${ingredientName}`
 
     // Now parse the reconstructed version normally
-    const measurementPattern = /^(\d+\/?\d*|\d*\.?\d+|\d+\s+\d+\/\d+)?\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|whole|stalk|stalks)s?\s+/i
+    const measurementPattern = /^(\d+\/?\d*|\d*\.?\d+|\d+\s+\d+\/\d+)?\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|whole|stalk|stalks|bunch|bunches|head|heads|sprig|sprigs)s?\s+/i
     let itemName = reconstructed.replace(measurementPattern, '').trim()
     itemName = itemName.split(',')[0].trim()
     itemName = itemName.split('(')[0].trim()
@@ -1222,7 +1222,7 @@ function parseIngredient(ingredient: string): { item: string; quantity: string; 
 
   // Extract the main item by removing quantities and measurements from the beginning only
   // Note: size descriptors (large/medium/small) are handled in extractCoreIngredient
-  const measurementPattern = /^(\d+\/?\d*|\d*\.?\d+|\d+\s+\d+\/\d+)?\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|whole|stalk|stalks)s?\s+/i
+  const measurementPattern = /^(\d+\/?\d*|\d*\.?\d+|\d+\s+\d+\/\d+)?\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|liter|liters|l|milliliter|milliliters|ml|pinch|dash|can|cans|package|packages|pkg|clove|cloves|whole|stalk|stalks|bunch|bunches|head|heads|sprig|sprigs)s?\s+/i
 
   let itemName = text.replace(measurementPattern, '').trim()
 
