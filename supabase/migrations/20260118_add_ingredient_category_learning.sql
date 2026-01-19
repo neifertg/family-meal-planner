@@ -29,45 +29,25 @@ ALTER TABLE ingredient_category_preferences ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their family's category preferences"
   ON ingredient_category_preferences
   FOR SELECT
-  USING (
-    family_id IN (
-      SELECT family_id FROM family_members
-      WHERE user_id = auth.uid()
-    )
-  );
+  USING (family_id = get_user_family_id());
 
 -- Policy: Users can insert preferences for their own family
 CREATE POLICY "Users can insert category preferences for their family"
   ON ingredient_category_preferences
   FOR INSERT
-  WITH CHECK (
-    family_id IN (
-      SELECT family_id FROM family_members
-      WHERE user_id = auth.uid()
-    )
-  );
+  WITH CHECK (family_id = get_user_family_id());
 
 -- Policy: Users can update their family's preferences
 CREATE POLICY "Users can update their family's category preferences"
   ON ingredient_category_preferences
   FOR UPDATE
-  USING (
-    family_id IN (
-      SELECT family_id FROM family_members
-      WHERE user_id = auth.uid()
-    )
-  );
+  USING (family_id = get_user_family_id());
 
 -- Policy: Users can delete their family's preferences
 CREATE POLICY "Users can delete their family's category preferences"
   ON ingredient_category_preferences
   FOR DELETE
-  USING (
-    family_id IN (
-      SELECT family_id FROM family_members
-      WHERE user_id = auth.uid()
-    )
-  );
+  USING (family_id = get_user_family_id());
 
 -- Add comment
 COMMENT ON TABLE ingredient_category_preferences IS 'Stores user-learned category preferences for ingredients to improve automatic categorization';
