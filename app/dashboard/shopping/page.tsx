@@ -181,18 +181,35 @@ export default function ShoppingListPage() {
 
     setGenerating(true)
     try {
-      // Load learned category preferences
-      const { data: preferences } = await supabase
+      // Load global category preferences (community-driven)
+      const { data: globalPrefs } = await supabase
+        .from('global_ingredient_categories')
+        .select('ingredient_name, category')
+        .order('vote_count', { ascending: false })
+
+      // Load family-specific category preferences (overrides)
+      const { data: familyPrefs } = await supabase
         .from('ingredient_category_preferences')
         .select('ingredient_name, category')
         .eq('family_id', familyId)
 
       // Clear and populate preferences map
+      // First load global preferences (base layer)
       categoryPreferences.clear()
-      preferences?.forEach(pref => {
+      globalPrefs?.forEach(pref => {
         categoryPreferences.set(pref.ingredient_name, pref.category)
       })
-      console.log('Loaded category preferences:', categoryPreferences.size)
+
+      // Then overlay family-specific preferences (they take priority)
+      familyPrefs?.forEach(pref => {
+        categoryPreferences.set(pref.ingredient_name, pref.category)
+      })
+
+      console.log('Loaded category preferences:', {
+        global: globalPrefs?.length || 0,
+        family: familyPrefs?.length || 0,
+        total: categoryPreferences.size
+      })
 
       // Get upcoming meal plans (next 7 days)
       const today = new Date().toISOString().split('T')[0]
@@ -530,16 +547,27 @@ export default function ShoppingListPage() {
 
     // If category changed, save this as a learned preference
     if (categoryChanged && familyId) {
+      const ingredientNameLower = editName.trim().toLowerCase()
+
+      // Save family-specific preference
       await supabase
         .from('ingredient_category_preferences')
         .upsert({
           family_id: familyId,
-          ingredient_name: editName.trim().toLowerCase(),
+          ingredient_name: ingredientNameLower,
           category: editCategory,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'family_id,ingredient_name'
         })
+
+      // Contribute to global learning (benefits all users)
+      await supabase.rpc('increment_global_category_vote', {
+        p_ingredient_name: ingredientNameLower,
+        p_category: editCategory
+      })
+
+      console.log(`Learned: "${ingredientNameLower}" → "${editCategory}" (family + global)`)
     }
   }
 
