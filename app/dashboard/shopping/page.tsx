@@ -328,16 +328,19 @@ export default function ShoppingListPage() {
 
       console.log('Aggregated ingredients:', ingredientMap)
 
-      // Insert all aggregated ingredients with combined quantities
+      // Insert all aggregated ingredients with smart shopping quantities
       const itemsToInsert = Array.from(ingredientMap.entries()).map(([itemName, value]) => {
-        const combinedQty = combineQuantities(value.quantities)
+        const { display, recipeNote } = convertToShoppingQuantity(itemName, value.quantities)
         // Store all recipe IDs as comma-separated string
         const allRecipeIds = Array.from(value.recipeIds).join(',')
+
+        // Combine display and recipe note for quantity field
+        const quantityDisplay = recipeNote ? `${display}\n(${recipeNote})` : display
 
         return {
           family_id: familyId,
           name: itemName,
-          quantity: combinedQty,
+          quantity: quantityDisplay,
           category: categorizeIngredient(itemName),
           is_checked: false,
           recipe_id: allRecipeIds
@@ -910,7 +913,7 @@ export default function ShoppingListPage() {
                               )}
                             </div>
                             {item.quantity && (
-                              <div className="text-xs text-gray-500 mt-0.5">{item.quantity}</div>
+                              <div className="text-xs text-gray-500 mt-0.5 whitespace-pre-line">{item.quantity}</div>
                             )}
                           </div>
                           <div className="flex gap-1">
@@ -1245,19 +1248,104 @@ function parseIngredient(ingredient: string): { item: string; quantity: string; 
   }
 }
 
-// Combine multiple quantity strings intelligently
-function combineQuantities(quantities: string[]): string {
-  if (quantities.length === 1) {
-    return quantities[0]
+// Store-standard package sizes for common items
+const PACKAGE_STANDARDS: Record<string, { size: number; unit: string; name: string }> = {
+  'egg': { size: 12, unit: 'count', name: 'dozen' },
+  'eggs': { size: 12, unit: 'count', name: 'dozen' },
+  'mayo': { size: 1, unit: 'jar', name: 'jar' },
+  'mayonnaise': { size: 1, unit: 'jar', name: 'jar' },
+  'mustard': { size: 1, unit: 'jar', name: 'jar' },
+  'ketchup': { size: 1, unit: 'bottle', name: 'bottle' },
+  'soy sauce': { size: 1, unit: 'bottle', name: 'bottle' },
+  'olive oil': { size: 1, unit: 'bottle', name: 'bottle' },
+  'cooking oil': { size: 1, unit: 'bottle', name: 'bottle' },
+  'butter': { size: 1, unit: 'lb', name: 'lb' },
+  'milk': { size: 1, unit: 'gallon', name: 'gallon' },
+  'cream': { size: 1, unit: 'pint', name: 'pint' },
+  'yogurt': { size: 1, unit: 'container', name: 'container' },
+}
+
+// Convert recipe quantities to practical shopping quantities
+function convertToShoppingQuantity(ingredientName: string, quantities: string[]): { display: string; recipeNote: string } {
+  // Combine all quantities first
+  const combined = combineQuantitiesRaw(quantities)
+
+  // Check if this is a store-standard packaged item
+  const lowerName = ingredientName.toLowerCase()
+  const packageStd = PACKAGE_STANDARDS[lowerName]
+
+  if (packageStd && combined.count) {
+    // For eggs: if recipe needs 3.5, buy 1 dozen (12)
+    const packagesNeeded = Math.ceil(combined.count / packageStd.size)
+    const display = packagesNeeded === 1
+      ? `1 ${packageStd.name}`
+      : `${packagesNeeded} ${packageStd.name}s`
+    const recipeNote = `Recipe calls for: ${combined.count % 1 === 0 ? combined.count : combined.count.toFixed(1)}`
+    return { display, recipeNote }
   }
 
-  // Try to parse and add numeric quantities
-  const parsedQuantities: { value: number; unit: string; original: string }[] = []
-  const itemCounts = new Map<string, number>() // For counting items like "3 cans"
+  // For produce and whole items, round up to whole numbers
+  if (combined.count && (combined.unit === 'whole' || !combined.unit)) {
+    const roundedCount = Math.ceil(combined.count)
+    const display = `${roundedCount}`
+    const recipeNote = combined.count !== roundedCount
+      ? `Recipe calls for: ${combined.count.toFixed(1)}`
+      : ''
+    return { display, recipeNote }
+  }
+
+  // For volume/weight measurements, show practical amounts
+  if (combined.measurements.length > 0) {
+    const practical = combined.measurements.map(m => {
+      // Round to practical increments
+      let roundedValue = m.value
+      if (m.unit.match(/cup|tbsp|tsp/i)) {
+        // Round cups/spoons to nearest 1/4
+        roundedValue = Math.ceil(m.value * 4) / 4
+      } else if (m.unit.match(/lb|oz|g|kg/i)) {
+        // Round weight to nearest 0.5
+        roundedValue = Math.ceil(m.value * 2) / 2
+      }
+
+      const display = roundedValue % 1 === 0
+        ? roundedValue.toString()
+        : roundedValue.toFixed(2).replace(/\.?0+$/, '')
+
+      const recipeNote = roundedValue !== m.value
+        ? `Recipe calls for: ${m.value.toFixed(2)} ${m.unit}`
+        : ''
+
+      return {
+        display: `${display} ${m.unit}${roundedValue > 1 && !m.unit.endsWith('s') ? 's' : ''}`,
+        recipeNote
+      }
+    })
+
+    return {
+      display: practical.map(p => p.display).join(', '),
+      recipeNote: practical.map(p => p.recipeNote).filter(Boolean).join('; ')
+    }
+  }
+
+  // Fallback: just show the combined quantity
+  return {
+    display: formatCombinedQuantities(combined),
+    recipeNote: ''
+  }
+}
+
+// Parse and sum quantities (raw data)
+function combineQuantitiesRaw(quantities: string[]): {
+  count?: number;
+  unit?: string;
+  measurements: Array<{ value: number; unit: string }>
+} {
+  let totalCount: number | undefined
+  const measurements: Array<{ value: number; unit: string }> = []
 
   quantities.forEach(qty => {
     // Try to match quantity + unit pattern
-    const match = qty.match(/^(\d+\.?\d*|\d*\.?\d+|(\d+\s+)?\d+\/\d+)\s*([a-zA-Z]+)/)
+    const match = qty.match(/^(\d+\.?\d*|\d*\.?\d+|(\d+\s+)?\d+\/\d+)\s*([a-zA-Z]+)?\s*/i)
     if (match) {
       let value: number
       const numStr = match[1].trim()
@@ -1266,12 +1354,10 @@ function combineQuantities(quantities: string[]): string {
       if (numStr.includes('/')) {
         const parts = numStr.split(/\s+/)
         if (parts.length === 2) {
-          // "1 1/2" format
           const whole = parseInt(parts[0])
           const [num, den] = parts[1].split('/').map(Number)
           value = whole + (num / den)
         } else {
-          // "1/2" format
           const [num, den] = numStr.split('/').map(Number)
           value = num / den
         }
@@ -1279,47 +1365,51 @@ function combineQuantities(quantities: string[]): string {
         value = parseFloat(numStr)
       }
 
-      const unit = match[3] || ''
-      parsedQuantities.push({ value, unit: unit.toLowerCase(), original: qty })
-    } else {
-      // Try to extract just a count (e.g., "3 cans", "2 packages")
-      const countMatch = qty.match(/^(\d+)/)
-      if (countMatch) {
-        const count = parseInt(countMatch[1])
-        const key = 'items'
-        itemCounts.set(key, (itemCounts.get(key) || 0) + count)
+      const unit = match[3]?.toLowerCase() || 'whole'
+
+      // If no unit or "whole", it's a count
+      if (!match[3] || unit === 'whole') {
+        totalCount = (totalCount || 0) + value
+      } else {
+        // Find existing measurement with same unit and add
+        const existing = measurements.find(m => m.unit === unit)
+        if (existing) {
+          existing.value += value
+        } else {
+          measurements.push({ value, unit })
+        }
       }
     }
   })
 
-  // Group by unit and sum
-  const unitGroups = new Map<string, number>()
-  parsedQuantities.forEach(({ value, unit }) => {
-    unitGroups.set(unit, (unitGroups.get(unit) || 0) + value)
-  })
+  return {
+    count: totalCount,
+    unit: totalCount ? 'whole' : undefined,
+    measurements
+  }
+}
 
-  // Format combined quantities
-  const combined: string[] = []
+// Format combined quantities for display
+function formatCombinedQuantities(combined: ReturnType<typeof combineQuantitiesRaw>): string {
+  const parts: string[] = []
 
-  unitGroups.forEach((total, unit) => {
-    // Format nicely (e.g., 2.5 cups, 3 lbs)
-    const formatted = total % 1 === 0 ? total.toString() : total.toFixed(1)
-    combined.push(`${formatted} ${unit}${total > 1 && !unit.endsWith('s') ? 's' : ''}`)
-  })
-
-  // Add item counts
-  itemCounts.forEach((count, key) => {
-    if (count > 0) {
-      combined.push(`${count} needed`)
-    }
-  })
-
-  // If nothing was parseable, just show the count
-  if (combined.length === 0) {
-    return `${quantities.length} needed`
+  if (combined.count) {
+    const rounded = Math.ceil(combined.count)
+    parts.push(`${rounded}`)
   }
 
-  return combined.join(', ')
+  combined.measurements.forEach(m => {
+    const formatted = m.value % 1 === 0 ? m.value.toString() : m.value.toFixed(1)
+    parts.push(`${formatted} ${m.unit}${m.value > 1 && !m.unit.endsWith('s') ? 's' : ''}`)
+  })
+
+  return parts.length > 0 ? parts.join(', ') : '1 needed'
+}
+
+// Legacy function for backward compatibility
+function combineQuantities(quantities: string[]): string {
+  const result = convertToShoppingQuantity('', quantities)
+  return result.display
 }
 
 function categorizeIngredient(ingredient: string): string {
