@@ -48,6 +48,7 @@ export default function ShoppingListPage() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editQuantity, setEditQuantity] = useState('')
+  const [editCategory, setEditCategory] = useState('')
   const supabase = createClient()
 
   useEffect(() => {
@@ -180,6 +181,19 @@ export default function ShoppingListPage() {
 
     setGenerating(true)
     try {
+      // Load learned category preferences
+      const { data: preferences } = await supabase
+        .from('ingredient_category_preferences')
+        .select('ingredient_name, category')
+        .eq('family_id', familyId)
+
+      // Clear and populate preferences map
+      categoryPreferences.clear()
+      preferences?.forEach(pref => {
+        categoryPreferences.set(pref.ingredient_name, pref.category)
+      })
+      console.log('Loaded category preferences:', categoryPreferences.size)
+
       // Get upcoming meal plans (next 7 days)
       const today = new Date().toISOString().split('T')[0]
       const weekLater = new Date()
@@ -474,21 +488,26 @@ export default function ShoppingListPage() {
     setEditingItemId(item.id)
     setEditName(item.name)
     setEditQuantity(item.quantity || '')
+    setEditCategory(item.category || 'other')
   }
 
   const cancelEditing = () => {
     setEditingItemId(null)
     setEditName('')
     setEditQuantity('')
+    setEditCategory('')
   }
 
   const saveEdit = async () => {
     if (!editingItemId || !editName.trim()) return
 
+    const oldItem = items.find(item => item.id === editingItemId)
+    const categoryChanged = oldItem && oldItem.category !== editCategory
+
     // Optimistic update - update UI immediately
     setItems(items.map(item =>
       item.id === editingItemId
-        ? { ...item, name: editName.trim(), quantity: editQuantity.trim() || null }
+        ? { ...item, name: editName.trim(), quantity: editQuantity.trim() || null, category: editCategory }
         : item
     ))
     cancelEditing()
@@ -497,7 +516,8 @@ export default function ShoppingListPage() {
       .from('grocery_list_items')
       .update({
         name: editName.trim(),
-        quantity: editQuantity.trim() || null
+        quantity: editQuantity.trim() || null,
+        category: editCategory
       })
       .eq('id', editingItemId)
 
@@ -505,6 +525,21 @@ export default function ShoppingListPage() {
       console.error('Error updating item:', error)
       // Reload on error to restore correct state
       loadShoppingList()
+      return
+    }
+
+    // If category changed, save this as a learned preference
+    if (categoryChanged && familyId) {
+      await supabase
+        .from('ingredient_category_preferences')
+        .upsert({
+          family_id: familyId,
+          ingredient_name: editName.trim().toLowerCase(),
+          category: editCategory,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'family_id,ingredient_name'
+        })
     }
   }
 
@@ -815,6 +850,18 @@ export default function ShoppingListPage() {
                               placeholder="Quantity (optional)"
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm text-gray-900 placeholder:text-gray-400"
                             />
+                            <select
+                              value={editCategory}
+                              onChange={(e) => setEditCategory(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm text-gray-900"
+                            >
+                              <option value="produce">🥬 Produce</option>
+                              <option value="dairy">🥛 Dairy</option>
+                              <option value="meat">🥩 Meat/Protein</option>
+                              <option value="frozen">❄️ Frozen</option>
+                              <option value="pantry">🥫 Pantry</option>
+                              <option value="other">📦 Other</option>
+                            </select>
                           </div>
                           <div className="flex gap-1">
                             <button
@@ -1412,16 +1459,25 @@ function combineQuantities(quantities: string[]): string {
   return result.display
 }
 
+// Learned category preferences (loaded on shopping list generation)
+const categoryPreferences = new Map<string, string>()
+
 function categorizeIngredient(ingredient: string): string {
   const lower = ingredient.toLowerCase()
 
+  // Check learned preferences first
+  if (categoryPreferences.has(lower)) {
+    return categoryPreferences.get(lower)!
+  }
+
+  // Fall back to pattern matching
   if (/(apple|banana|orange|lettuce|tomato|carrot|onion|garlic|pepper|fruit|vegetable|spinach|kale|broccoli|cauliflower|potato|celery|cucumber|zucchini|mushroom)/i.test(lower)) {
     return 'produce'
   }
   if (/(milk|cheese|yogurt|butter|cream|dairy|egg|eggs)/i.test(lower)) {
     return 'dairy'
   }
-  if (/(chicken|beef|pork|fish|salmon|meat|turkey|lamb|shrimp|bacon|sausage)/i.test(lower)) {
+  if (/(chicken|beef|pork|fish|salmon|tuna|cod|tilapia|halibut|trout|meat|turkey|lamb|shrimp|bacon|sausage|crab|lobster|scallop)/i.test(lower)) {
     return 'meat'
   }
   if (/(frozen|ice cream)/i.test(lower)) {
