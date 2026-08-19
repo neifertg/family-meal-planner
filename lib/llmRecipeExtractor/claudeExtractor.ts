@@ -6,6 +6,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { ExtractedRecipe, ExtractionResult, ContentSource } from './types'
+import { assertPublicHttpUrl } from '../security/safeFetchUrl'
 
 const EXTRACTION_PROMPT = `You are a recipe extraction expert. Extract all recipe information from the provided content and return it as valid JSON.
 
@@ -179,6 +180,7 @@ export async function extractRecipeWithClaude(
 
     if (source.type === 'url') {
       // Fetch HTML
+      await assertPublicHttpUrl(source.content)
       const response = await fetch(source.content)
       const html = await response.text()
       contentText = cleanContent(html)

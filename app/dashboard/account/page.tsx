@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { FormErrorBanner, FieldError } from '@/components/FormError'
 import { validateRequired, validateBirthday, combineValidations, ValidationError, getFieldError } from '@/lib/validation'
+import { sniffImageExtension, MAX_UPLOAD_BYTES } from '@/lib/security/validateImageUpload'
 
 type Invitation = {
   id: string
@@ -161,12 +162,22 @@ function FamilyMembersSection() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    if (file.size > MAX_UPLOAD_BYTES) {
+      console.error('Upload error: file too large')
+      return
+    }
+
+    const fileExt = await sniffImageExtension(file)
+    if (!fileExt) {
+      console.error('Upload error: unsupported image format')
+      return
+    }
+
     setUploadingPhoto(true)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}-${Date.now()}.${fileExt}`
     const filePath = `family-photos/${fileName}`
 

@@ -340,6 +340,7 @@ export default function ReceiptScanner({ onReceiptProcessed }: ReceiptScannerPro
       })
 
       saveReceiptCorrections(
+        supabase,
         {
           family_id: familyId,
           store_name: editableStoreName || null,

@@ -8,6 +8,7 @@ import RecipeRating from '@/components/RecipeRating'
 import ShareRecipeModal from '@/components/ShareRecipeModal'
 import UmbrellaGroupRecipeRating from '@/components/UmbrellaGroupRecipeRating'
 import TagInput, { COMMON_RECIPE_TAGS } from '@/components/TagInput'
+import { sniffImageExtension, MAX_UPLOAD_BYTES } from '@/lib/security/validateImageUpload'
 
 type Recipe = {
   id: string
@@ -150,7 +151,15 @@ export default function RecipeDetailPage() {
       // Upload image if file is provided
       let uploadedImageUrl = editImageUrl
       if (editImageFile) {
-        const fileExt = editImageFile.name.split('.').pop()
+        if (editImageFile.size > MAX_UPLOAD_BYTES) {
+          throw new Error('Image is too large (max 5MB)')
+        }
+
+        const fileExt = await sniffImageExtension(editImageFile)
+        if (!fileExt) {
+          throw new Error('Unsupported image format')
+        }
+
         const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`
         const filePath = `recipe-images/${fileName}`
 

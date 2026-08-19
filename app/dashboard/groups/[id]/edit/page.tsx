@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { sniffImageExtension, MAX_UPLOAD_BYTES } from '@/lib/security/validateImageUpload'
 
 export default function EditGroupPage({ params }: { params: Promise<{ id: string }> }) {
   const [name, setName] = useState('')
@@ -124,7 +125,19 @@ export default function EditGroupPage({ params }: { params: Promise<{ id: string
       // Upload new logo if file is provided
       let uploadedLogoUrl: string | null = currentLogoUrl
       if (logoFile) {
-        const fileExt = logoFile.name.split('.').pop()
+        if (logoFile.size > MAX_UPLOAD_BYTES) {
+          setError('Logo is too large (max 5MB)')
+          setSaving(false)
+          return
+        }
+
+        const fileExt = await sniffImageExtension(logoFile)
+        if (!fileExt) {
+          setError('Unsupported image format')
+          setSaving(false)
+          return
+        }
+
         const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`
         const filePath = `group-logos/${fileName}`
 

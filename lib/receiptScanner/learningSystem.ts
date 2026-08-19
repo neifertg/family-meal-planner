@@ -5,7 +5,10 @@
  * and providing vendor-specific examples to the AI model
  */
 
-import { createClient } from '@/lib/supabase/client'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database.types'
+
+type TypedSupabaseClient = SupabaseClient<Database>
 
 export type ReceiptItemCorrection = {
   ai_extracted_name: string
@@ -36,12 +39,11 @@ export type ReceiptScanSession = {
  * Returns recent corrections for the same store to use as few-shot examples
  */
 export async function getVendorLearningExamples(
+  supabase: TypedSupabaseClient,
   familyId: string,
   storeName: string | null,
   limit: number = 10
 ): Promise<ReceiptItemCorrection[]> {
-  const supabase = createClient()
-
   // Build query - get corrections from the same vendor
   let query = supabase
     .from('receipt_item_corrections')
@@ -84,11 +86,10 @@ export async function getVendorLearningExamples(
  * Useful when scanning from a new vendor
  */
 export async function getGeneralLearningExamples(
+  supabase: TypedSupabaseClient,
   familyId: string,
   limit: number = 5
 ): Promise<ReceiptItemCorrection[]> {
-  const supabase = createClient()
-
   const { data, error } = await supabase
     .from('receipt_item_corrections')
     .select(`
@@ -121,12 +122,11 @@ export async function getGeneralLearningExamples(
  * Save receipt scan session and corrections for future learning
  */
 export async function saveReceiptCorrections(
+  supabase: TypedSupabaseClient,
   session: ReceiptScanSession,
   originalItems: any[],
   correctedItems: any[]
 ): Promise<void> {
-  const supabase = createClient()
-
   try {
     // 1. Save receipt scan session
     const { data: scanData, error: scanError } = await supabase
@@ -219,9 +219,7 @@ export function formatExamplesForPrompt(examples: ReceiptItemCorrection[]): stri
 /**
  * Get statistics about learning data for a family
  */
-export async function getLearningStats(familyId: string) {
-  const supabase = createClient()
-
+export async function getLearningStats(supabase: TypedSupabaseClient, familyId: string) {
   const [scansResult, correctionsResult, vendorsResult] = await Promise.all([
     // Total scans
     supabase

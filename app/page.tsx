@@ -12,33 +12,6 @@ export default async function HomePage() {
     redirect('/dashboard')
   }
 
-  // Auto-login with default account (temporary for development)
-  const { data: authData, error } = await supabase.auth.signInWithPassword({
-    email: 'neifert_family@example.com',
-    password: 'REDACTED_ROTATED_PASSWORD',
-  })
-
-  if (!error && authData.user) {
-    // Check if family exists, create if not
-    const { data: family } = await supabase
-      .from('families')
-      .select('id')
-      .eq('created_by', authData.user.id)
-      .single()
-
-    if (!family) {
-      // Create family if it doesn't exist
-      await supabase
-        .from('families')
-        .insert({
-          name: 'Neifert Family',
-          created_by: authData.user.id,
-        } as any)
-    }
-
-    redirect('/dashboard')
-  }
-
   return (
     <main className="min-h-screen bg-gradient-to-b from-green-50 to-white">
       <div className="container mx-auto px-4 py-16">

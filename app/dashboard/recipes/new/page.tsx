@@ -11,6 +11,7 @@ import { ExtractedRecipe } from '@/lib/llmRecipeExtractor/types'
 import ErrorBanner from '@/components/ErrorBanner'
 import { InputField, TextAreaField } from '@/components/FormField'
 import TagInput, { COMMON_RECIPE_TAGS } from '@/components/TagInput'
+import { sniffImageExtension, MAX_UPLOAD_BYTES } from '@/lib/security/validateImageUpload'
 
 export default function NewRecipePage() {
   const router = useRouter()
@@ -153,7 +154,15 @@ export default function NewRecipePage() {
       // Upload image if file is provided
       let uploadedImageUrl = imageUrl
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop()
+        if (imageFile.size > MAX_UPLOAD_BYTES) {
+          throw new Error('Image is too large (max 5MB)')
+        }
+
+        const fileExt = await sniffImageExtension(imageFile)
+        if (!fileExt) {
+          throw new Error('Unsupported image format')
+        }
+
         const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`
         const filePath = `recipe-images/${fileName}`
 

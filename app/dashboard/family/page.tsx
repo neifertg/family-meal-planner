@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
+import { sniffImageExtension, MAX_UPLOAD_BYTES } from '@/lib/security/validateImageUpload'
 
 type FamilyMember = {
   id: string
@@ -114,12 +115,22 @@ export default function FamilyPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    if (file.size > MAX_UPLOAD_BYTES) {
+      console.error('Upload error: file too large')
+      return
+    }
+
+    const fileExt = await sniffImageExtension(file)
+    if (!fileExt) {
+      console.error('Upload error: unsupported image format')
+      return
+    }
+
     setUploadingPhoto(true)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}-${Date.now()}.${fileExt}`
     const filePath = `family-photos/${fileName}`
 

@@ -32,5 +32,18 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const { pathname } = request.nextUrl
+
+  if (!user) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (pathname.startsWith('/dashboard')) {
+      const loginUrl = new URL('/auth/login', request.url)
+      return NextResponse.redirect(loginUrl)
+    }
+  }
+
   return supabaseResponse
 }
