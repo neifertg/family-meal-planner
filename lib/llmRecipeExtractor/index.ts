@@ -12,6 +12,7 @@ import { extractRecipeWithGemini } from './geminiExtractor'
 import { extractRecipeWithClaude } from './claudeExtractor'
 import { scrapeRecipeFromSchemaOrg } from '../recipeScraper/schemaOrgParser'
 import { ScrapedRecipe } from '../recipeScraper/types'
+import { assertPublicHttpUrl } from '../security/safeFetchUrl'
 
 /**
  * Get configured AI provider from environment
@@ -90,6 +91,8 @@ function convertScrapedToExtracted(scraped: ScrapedRecipe): ExtractedRecipe {
  */
 async function trySchemaOrgExtraction(url: string): Promise<ExtractedRecipe | null> {
   try {
+    await assertPublicHttpUrl(url)
+
     console.log('Attempting schema.org extraction...')
     const response = await fetch(url, {
       headers: {

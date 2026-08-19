@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { createClient } from '@/lib/supabase/server'
+import { requireUser } from '@/lib/security/requireUser'
+import { checkRateLimit } from '@/lib/security/rateLimit'
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -8,6 +11,16 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient()
+    const user = await requireUser(supabase)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!(await checkRateLimit(supabase, 'transcribe-audio'))) {
+      return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+    }
+
     const formData = await request.formData()
     const audioFile = formData.get('audio') as File
 

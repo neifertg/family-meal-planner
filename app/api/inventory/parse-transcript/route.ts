@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@/lib/supabase/server'
+import { requireUser } from '@/lib/security/requireUser'
+import { checkRateLimit } from '@/lib/security/rateLimit'
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -8,6 +11,16 @@ const anthropic = new Anthropic({
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient()
+    const user = await requireUser(supabase)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!(await checkRateLimit(supabase, 'parse-transcript'))) {
+      return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+    }
+
     const { transcript } = await request.json()
 
     if (!transcript || typeof transcript !== 'string') {
@@ -108,14 +121,15 @@ ${transcript}`
     } catch (parseError) {
       console.error('Failed to parse Claude response as JSON:', responseText)
       return NextResponse.json(
-        { error: 'Failed to parse AI response', raw: responseText },
+        { error: 'Failed to parse AI response' },
         { status: 500 }
       )
     }
 
     if (!parsedData.items || !Array.isArray(parsedData.items)) {
+      console.error('Invalid response format from AI:', parsedData)
       return NextResponse.json(
-        { error: 'Invalid response format from AI', raw: parsedData },
+        { error: 'Invalid response format from AI' },
         { status: 500 }
       )
     }

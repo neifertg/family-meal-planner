@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import * as cheerio from 'cheerio'
+import { assertPublicHttpUrl } from '@/lib/security/safeFetchUrl'
+import { requireUser } from '@/lib/security/requireUser'
+import { verifySameOrigin } from '@/lib/security/verifyOrigin'
 
 type ScrapedRecipe = {
   name?: string
@@ -18,6 +21,8 @@ type ScrapedRecipe = {
 
 async function scrapeRecipe(url: string): Promise<ScrapedRecipe | null> {
   try {
+    await assertPublicHttpUrl(url)
+
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -136,6 +141,21 @@ async function scrapeRecipe(url: string): Promise<ScrapedRecipe | null> {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!verifySameOrigin(request)) {
+      return NextResponse.json({ error: 'Invalid request origin' }, { status: 403 })
+    }
+
+    // Get the authenticated user before doing anything with the submitted URL
+    const supabase = await createClient()
+    const user = await requireUser(supabase)
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { url } = await request.json()
 
     if (!url) {
@@ -152,17 +172,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Could not extract recipe from URL. The recipe may not have structured data (schema.org), or the site may be blocking automated requests. Try copying the recipe manually instead.' },
         { status: 400 }
-      )
-    }
-
-    // Get the authenticated user
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
       )
     }
 

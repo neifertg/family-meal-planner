@@ -6,6 +6,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { ExtractedRecipe, ExtractionResult, ContentSource } from './types'
+import { assertPublicHttpUrl } from '../security/safeFetchUrl'
 
 const RECIPE_SCHEMA = {
   type: 'object',
@@ -204,6 +205,7 @@ export async function extractRecipeWithGemini(
 
     if (source.type === 'url') {
       // Fetch HTML
+      await assertPublicHttpUrl(source.content)
       const response = await fetch(source.content)
       const html = await response.text()
       contentText = cleanContent(html)

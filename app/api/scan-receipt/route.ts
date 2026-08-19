@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractReceiptFromImage, extractReceiptWithChunking, extractReceiptWithOCR } from '@/lib/receiptScanner/claudeExtractor'
 import { getVendorLearningExamples, getGeneralLearningExamples } from '@/lib/receiptScanner/learningSystem'
+import { createClient } from '@/lib/supabase/server'
+import { requireUser } from '@/lib/security/requireUser'
+import { checkRateLimit } from '@/lib/security/rateLimit'
 
 // Configure route to handle large payloads (base64 images)
 // For Vercel: maxDuration is max execution time
@@ -21,6 +24,16 @@ export const maxDuration = 60 // 60 seconds max execution time
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient()
+    const user = await requireUser(supabase)
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!(await checkRateLimit(supabase, 'scan-receipt'))) {
+      return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 })
+    }
+
     console.log('[scan-receipt] Request received', {
       timestamp: new Date().toISOString(),
       headers: Object.fromEntries(request.headers.entries())
@@ -87,13 +100,13 @@ export async function POST(request: NextRequest) {
       console.log('[scan-receipt] Fetching learning examples', { familyId, storeName })
       // Try vendor-specific examples first
       if (storeName) {
-        learningExamples = await getVendorLearningExamples(familyId, storeName, 10)
+        learningExamples = await getVendorLearningExamples(supabase, familyId, storeName, 10)
         console.log('[scan-receipt] Vendor-specific examples found', { count: learningExamples.length })
       }
 
       // If no vendor-specific examples, get general ones
       if (learningExamples.length === 0) {
-        learningExamples = await getGeneralLearningExamples(familyId, 5)
+        learningExamples = await getGeneralLearningExamples(supabase, familyId, 5)
         console.log('[scan-receipt] General examples found', { count: learningExamples.length })
       }
     }
