@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { extractRecipeFromURL, extractRecipeFromText, extractRecipe } from '@/lib/llmRecipeExtractor'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/security/requireUser'
+import { checkRateLimit } from '@/lib/security/rateLimit'
 
 /**
  * POST /api/scrape-recipe
@@ -32,6 +33,10 @@ export async function POST(request: NextRequest) {
     const user = await requireUser(supabase)
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!(await checkRateLimit(supabase, 'scrape-recipe'))) {
+      return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 })
     }
 
     const body = await request.json()

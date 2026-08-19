@@ -3,6 +3,7 @@ import { extractReceiptFromImage, extractReceiptWithChunking, extractReceiptWith
 import { getVendorLearningExamples, getGeneralLearningExamples } from '@/lib/receiptScanner/learningSystem'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/security/requireUser'
+import { checkRateLimit } from '@/lib/security/rateLimit'
 
 // Configure route to handle large payloads (base64 images)
 // For Vercel: maxDuration is max execution time
@@ -27,6 +28,10 @@ export async function POST(request: NextRequest) {
     const user = await requireUser(supabase)
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!(await checkRateLimit(supabase, 'scan-receipt'))) {
+      return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 })
     }
 
     console.log('[scan-receipt] Request received', {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/security/requireUser'
+import { checkRateLimit } from '@/lib/security/rateLimit'
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -14,6 +15,10 @@ export async function POST(request: NextRequest) {
     const user = await requireUser(supabase)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!(await checkRateLimit(supabase, 'parse-transcript'))) {
+      return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
     }
 
     const { transcript } = await request.json()
