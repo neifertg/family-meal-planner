@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import InvitationBadge from './InvitationBadge'
 
 export default function Sidebar() {
@@ -11,6 +11,21 @@ export default function Sidebar() {
   const router = useRouter()
   const supabase = createClient()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    const loadRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      setIsAdmin(profile?.role === 'admin')
+    }
+    loadRole()
+  }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -82,6 +97,19 @@ export default function Sidebar() {
         </svg>
       )
     },
+    ...(isAdmin
+      ? [
+          {
+            href: '/dashboard/admin/users',
+            label: 'Manage Users',
+            icon: (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.5a3.5 3.5 0 110 7 3.5 3.5 0 010-7zM4 20a8 8 0 0116 0M18.5 9a2.5 2.5 0 100-5M20.5 15a4.5 4.5 0 00-2.7-4.1" />
+              </svg>
+            )
+          }
+        ]
+      : []),
   ]
 
   return (

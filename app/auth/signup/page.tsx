@@ -27,7 +27,7 @@ export default function SignUpPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/auth/pending-approval`,
         }
       })
 
@@ -47,7 +47,7 @@ export default function SignUpPage() {
 
         // Check if email confirmation is required
         if (authData.session) {
-          router.push('/dashboard')
+          router.push('/auth/pending-approval')
         } else {
           setError('Please check your email to confirm your account, then sign in.')
           setLoading(false)
