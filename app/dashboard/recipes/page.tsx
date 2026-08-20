@@ -19,6 +19,8 @@ type Recipe = {
   tags: string[] | null
   estimated_cost_usd: number | null
   cost_per_serving_usd: number | null
+  created_by: string | null
+  creator?: { display_name: string | null; email: string | null } | null
   created_at: string
   average_rating?: number
   rating_count?: number
@@ -127,6 +129,7 @@ export default function RecipesPage() {
           .from('recipes')
           .select(`
             *,
+            creator:users!recipes_created_by_users_fkey(display_name, email),
             shared_groups:recipe_umbrella_group_shares!inner(
               umbrella_group_id,
               umbrella_groups(name)
@@ -144,6 +147,7 @@ export default function RecipesPage() {
           .from('recipes')
           .select(`
             *,
+            creator:users!recipes_created_by_users_fkey(display_name, email),
             shared_groups:recipe_umbrella_group_shares(
               umbrella_group_id,
               umbrella_groups(name)
@@ -586,6 +590,11 @@ export default function RecipesPage() {
                   {recipe.description && (
                     <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                       {recipe.description}
+                    </p>
+                  )}
+                  {(recipe.creator?.display_name || recipe.creator?.email) && (
+                    <p className="text-xs text-gray-400 mb-3">
+                      Uploaded by {recipe.creator.display_name || recipe.creator.email}
                     </p>
                   )}
 

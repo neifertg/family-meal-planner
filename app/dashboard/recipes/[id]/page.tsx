@@ -27,6 +27,8 @@ type Recipe = {
   tags: string[] | null
   owner?: string | null
   uploaded_by?: string | null
+  created_by: string | null
+  creator?: { display_name: string | null; email: string | null } | null
   created_at: string
 }
 
@@ -39,6 +41,8 @@ export default function RecipeDetailPage() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   // Edit form state
   const [editName, setEditName] = useState('')
@@ -70,12 +74,23 @@ export default function RecipeDetailPage() {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('recipes')
-        .select('*')
+        .select('*, creator:users!recipes_created_by_users_fkey(display_name, email)')
         .eq('id', params.id)
         .single()
 
       if (error) throw error
       setRecipe(data)
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUserId(user.id)
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        setIsAdmin(profile?.role === 'admin')
+      }
     } catch (err: any) {
       console.error('Error loading recipe:', err)
       setError(err.message || 'Failed to load recipe')
@@ -548,6 +563,12 @@ export default function RecipeDetailPage() {
                   <p className="text-lg text-gray-600 mb-4">{recipe.description}</p>
                 )}
 
+                {(recipe.creator?.display_name || recipe.creator?.email) && (
+                  <p className="text-sm text-gray-500 mb-4">
+                    Uploaded by {recipe.creator.display_name || recipe.creator.email}
+                  </p>
+                )}
+
                 {/* Tags */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   {recipe.cuisine && (
@@ -684,18 +705,22 @@ export default function RecipeDetailPage() {
                   </svg>
                   Share with Groups
                 </button>
-                <button
-                  onClick={startEditing}
-                  className="flex-1 min-w-[200px] bg-gradient-to-r from-purple-500 to-rose-500 hover:from-purple-600 hover:to-rose-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-                >
-                  Edit Recipe
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="bg-red-100 hover:bg-red-200 text-red-700 font-semibold py-3 px-6 rounded-lg transition-colors"
-                >
-                  Delete
-                </button>
+                {(isAdmin || currentUserId === recipe.created_by) && (
+                  <>
+                    <button
+                      onClick={startEditing}
+                      className="flex-1 min-w-[200px] bg-gradient-to-r from-purple-500 to-rose-500 hover:from-purple-600 hover:to-rose-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                    >
+                      Edit Recipe
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="bg-red-100 hover:bg-red-200 text-red-700 font-semibold py-3 px-6 rounded-lg transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
