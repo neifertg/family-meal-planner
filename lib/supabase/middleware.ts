@@ -43,6 +43,25 @@ export async function updateSession(request: NextRequest) {
       const loginUrl = new URL('/auth/login', request.url)
       return NextResponse.redirect(loginUrl)
     }
+
+    return supabaseResponse
+  }
+
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/api/')) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('approval_status')
+      .eq('id', user.id)
+      .single()
+
+    if (profile && profile.approval_status !== 'approved') {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Account pending approval' }, { status: 403 })
+      }
+
+      const pendingUrl = new URL('/auth/pending-approval', request.url)
+      return NextResponse.redirect(pendingUrl)
+    }
   }
 
   return supabaseResponse

@@ -44,3 +44,6 @@ Thumbs.db
 
 # Supabase CLI local cache
 supabase/.temp/
+
+# Personal Claude Code overrides (not meant to be shared)
+.claude/settings.local.json
