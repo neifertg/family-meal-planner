@@ -450,7 +450,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="member@example.com"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                     required
                     disabled={inviteLoading}
                   />
@@ -464,7 +464,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                     id="inviteRole"
                     value={inviteRole}
                     onChange={(e) => setInviteRole(e.target.value as 'member' | 'admin')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
                     disabled={inviteLoading}
                   >
                     <option value="member">Member</option>
